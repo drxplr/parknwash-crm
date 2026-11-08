@@ -817,17 +817,6 @@
   margin-left: auto;
   font-size: 9px;
 }
-/* Time-first calendar: a single quiet grid, with compact events. */
-.main-shell:has(.booking-toolbar) .page-heading {
-  margin-bottom: 8px;
-  min-height: 44px;
-}
-.main-shell:has(.booking-toolbar) .page-heading h1 {
-  font-size: 26px;
-}
-.main-shell:has(.booking-toolbar) .context-bar {
-  margin-bottom: 14px;
-}
 .card:has(.amie-calendar) .booking-toolbar {
   padding: 14px 18px;
 }
@@ -1159,59 +1148,10 @@
     #ededed 60px
   );
 }
-.main-shell:has(.booking-toolbar) main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 14px;
-  align-items: center;
-}
-.main-shell:has(.booking-toolbar) .page-heading {
-  display: contents;
-}
-.main-shell:has(.booking-toolbar) .page-heading > div:first-child {
-  grid-column: 1;
-  grid-row: 1;
-}
-.main-shell:has(.booking-toolbar) .page-heading > .btn {
-  grid-column: 3;
-  grid-row: 1;
-}
-.main-shell:has(.booking-toolbar) .context-bar {
-  grid-column: 2;
-  grid-row: 1;
-  margin: 0;
-  gap: 10px;
-}
-.main-shell:has(.booking-toolbar) .context-date {
-  display: none;
-}
-.main-shell:has(.booking-toolbar) .context-date:has(.demo-label) {
-  display: flex;
-  font-size: 0;
-  gap: 0;
-}
-.main-shell:has(.booking-toolbar) .context-date > svg {
-  display: none;
-}
-.main-shell:has(.booking-toolbar) .context-date .demo-label {
-  font-size: 10px;
-}
-.main-shell:has(.booking-toolbar) main > :not(.page-heading):not(.context-bar) {
-  grid-column: 1/-1;
-}
 .amie-calendar {
   max-height: calc(100vh - 230px);
 }
 @media (max-width: 850px) {
-  .main-shell:has(.booking-toolbar) main {
-    display: block;
-  }
-  .main-shell:has(.booking-toolbar) .page-heading {
-    display: flex;
-  }
-  .main-shell:has(.booking-toolbar) .context-bar {
-    margin-bottom: 14px;
-  }
   .amie-calendar {
     max-height: calc(100dvh - 280px);
   }

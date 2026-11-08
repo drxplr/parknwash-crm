@@ -5,6 +5,7 @@ const CloudApp = lazy(() => import('./CloudApp'))
 import './styles.css'
 import './refinements.css'
 import './ux.css'
+import './PageHeader.css'
 const cloudMode =
   (import.meta.env.VITE_CRM_MODE ?? (import.meta.env.PROD ? 'cloud' : 'demo')) === 'cloud'
 const demo = new URLSearchParams(location.search).get('demo') === '1'

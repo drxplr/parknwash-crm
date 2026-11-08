@@ -1,3 +1,4 @@
+import { PageHeader } from './PageHeader'
 import { DatePicker } from './DatePicker'
 import { serviceFits, sizeLabels } from './websiteCatalog'
 import { ScheduleCalendar } from './Calendar'
@@ -6,7 +7,7 @@ import { startOfWeek, calendarRangeLabel } from './calendarModel'
 import { Select } from './Select'
 import { customerColorStyle } from './customerColors'
 import { Messages, Settings, CustomerDetails } from './Operations'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
   ArrowDownLeft,
@@ -215,6 +216,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     [tableSearch, setTableSearch] = useState(''),
     [directoryView, setDirectoryView] = useState<'Customers' | 'Vehicles'>('Customers'),
     [sort, setSort] = useState('Name A–Z')
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [page])
   const busy = useRef(false),
     queuedToast = useRef('')
   const [saving, setSaving] = useState(false),
@@ -661,100 +665,103 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <Avatar small name={cloud?.label ?? 'Demo Manager'} />
             </span>
           </header>
-          <main>
-            <div className="page-heading">
-              <div>
-                <h1>{page === 'Overview' ? 'Today' : page}</h1>
-              </div>
-              {page === 'Customers' && cloud?.role !== 'viewer' && (
-                <button className="btn primary" onClick={() => setAddCustomerOpen(true)}>
-                  <Plus size={16} />
-                  Add customer
-                </button>
-              )}
-              {(page === 'Bookings' || page === 'Overview') && (
-                <button
-                  className="btn primary"
-                  disabled={cloud?.role === 'viewer'}
-                  onClick={() => {
-                    if (!store.settings.services.length || !staff.length) {
-                      if (!cloud || cloud.role === 'admin') navigate('Settings')
-                      else setToast('Ask an administrator to add services and staff.')
-                      return
-                    }
-                    if (
-                      !store.vehicles.some((v) =>
-                        store.customers.some((c) => c.id === v.customerId),
-                      )
-                    ) {
-                      navigate('Customers')
-                      return
-                    }
-
-                    setBookingStart({
-                      date,
-                      time: '09:00',
-                      staffId: staffFilter === 'All staff' ? undefined : staffFilter,
+          <main className="workspace-main" data-page={page.toLowerCase()}>
+            <PageHeader
+              title={page === 'Overview' ? 'Today' : page}
+              badge={!cloud ? 'Demo' : undefined}
+              meta={
+                page === 'Overview'
+                  ? dayLabel(today, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
                     })
-                    setNewBooking(true)
-                  }}
-                >
-                  <Plus size={16} />
-                  {!store.settings.services.length || !staff.length
-                    ? 'Set up calendar'
-                    : 'New booking'}
-                </button>
-              )}
-            </div>
-            {page !== 'Settings' && (
-              <div className="context-bar">
-                <div className="context-date">
-                  <CalendarDays size={15} />
-                  {page === 'Overview'
-                    ? dayLabel(today, {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })
-                    : page === 'Bookings'
-                      ? 'Zurich time'
-                      : 'Workspace'}
-                  {!cloud && <span className="demo-label">Demo</span>}
-                </div>
-                <div className="filters">
-                  <label className="select-wrap">
-                    <MapPin size={14} />
-                    <Select
-                      aria-label="Filter region"
-                      value={region}
-                      onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
-                    >
-                      <option>All regions</option>
-                      <option>Geneva</option>
-                      <option>Ticino</option>
-                    </Select>
-                  </label>
-                  {(page === 'Overview' || page === 'Bookings') && (
+                  : page === 'Bookings'
+                    ? 'Europe/Zurich'
+                    : undefined
+              }
+              filters={
+                page !== 'Settings' ? (
+                  <>
                     <label className="select-wrap">
-                      <Users size={14} />
+                      <MapPin size={14} />
                       <Select
-                        aria-label="Filter staff"
-                        value={staffFilter}
-                        onChange={(e) => setStaffFilter(e.target.value)}
+                        aria-label="Filter region"
+                        value={region}
+                        onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
                       >
-                        <option>All staff</option>
-                        {staff.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
+                        <option>All regions</option>
+                        <option>Geneva</option>
+                        <option>Ticino</option>
                       </Select>
                     </label>
-                  )}
-                </div>
-              </div>
-            )}
+                    {(page === 'Overview' || page === 'Bookings') && (
+                      <label className="select-wrap">
+                        <Users size={14} />
+                        <Select
+                          aria-label="Filter staff"
+                          value={staffFilter}
+                          onChange={(e) => setStaffFilter(e.target.value)}
+                        >
+                          <option>All staff</option>
+                          {staff.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+                    )}
+                  </>
+                ) : undefined
+              }
+              actions={
+                page === 'Customers' || page === 'Bookings' || page === 'Overview' ? (
+                  <>
+                    {page === 'Customers' && cloud?.role !== 'viewer' && (
+                      <button className="btn primary" onClick={() => setAddCustomerOpen(true)}>
+                        <Plus size={16} />
+                        Add customer
+                      </button>
+                    )}
+                    {(page === 'Bookings' || page === 'Overview') && (
+                      <button
+                        className="btn primary"
+                        disabled={cloud?.role === 'viewer'}
+                        onClick={() => {
+                          if (!store.settings.services.length || !staff.length) {
+                            if (!cloud || cloud.role === 'admin') navigate('Settings')
+                            else setToast('Ask an administrator to add services and staff.')
+                            return
+                          }
+                          if (
+                            !store.vehicles.some((v) =>
+                              store.customers.some((c) => c.id === v.customerId),
+                            )
+                          ) {
+                            navigate('Customers')
+                            return
+                          }
+
+                          setBookingStart({
+                            date,
+                            time: '09:00',
+                            staffId: staffFilter === 'All staff' ? undefined : staffFilter,
+                          })
+                          setNewBooking(true)
+                        }}
+                      >
+                        <Plus size={16} />
+                        {!store.settings.services.length || !staff.length
+                          ? 'Set up calendar'
+                          : 'New booking'}
+                      </button>
+                    )}
+                  </>
+                ) : undefined
+              }
+            />
             {storageError && (
               <div role="alert" className="notice">
                 Browser storage is unavailable. Changes will last only for this session.
@@ -1154,7 +1161,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     <input
                       value={tableSearch}
                       onChange={(e) => setTableSearch(e.target.value)}
-                      placeholder="Name, phone, car or registration…"
+                      placeholder="Search customers or cars…"
                       aria-label="Search customers"
                     />
                   </label>

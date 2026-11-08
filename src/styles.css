@@ -2310,7 +2310,7 @@ tbody tr:last-child td {
   .booking-toolbar {
     padding: 12px;
   }
-  .segmented {
+  .booking-toolbar .segmented {
     order: 1;
   }
   .booking-controls {
