@@ -45,6 +45,7 @@ import {
   tariff,
   statuses,
   STORAGE_KEY,
+  customerTypeLabel,
   swissToday,
 } from './model'
 import type { Activity, Booking, Customer, Region, Status, Store, Vehicle } from './model'
@@ -525,7 +526,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             }}
           >
             <div className="brand-icon">
-              <CarFront size={22} strokeWidth={1.8} aria-hidden="true" />
+              <img src={`${import.meta.env.BASE_URL}brand-mark.svg`} alt="" aria-hidden="true" />
             </div>
             <div>
               park n wash<span>Team workspace</span>
@@ -1048,13 +1049,13 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <section className="card">
                 <div className="listing-toolbar">
                   <div className="tabs">
-                    {['All customers', 'Private', 'Business'].map((t) => (
+                    {['All customers', 'Private', 'Business', 'Unclassified'].map((t) => (
                       <button
                         className={customerType === t ? 'selected' : ''}
                         key={t}
                         onClick={() => setCustomerType(t)}
                       >
-                        {t}{' '}
+                        {t === 'Unclassified' ? 'Not set' : t}{' '}
                         <span>
                           {
                             store.customers.filter(
@@ -1120,10 +1121,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                 >
                                   {c.type === 'Business' ? (
                                     <Building2 size={12} />
+                                  ) : c.type === 'Unclassified' ? (
+                                    <Clock3 size={12} />
                                   ) : (
                                     <Users size={12} />
                                   )}{' '}
-                                  {c.type}
+                                  {customerTypeLabel(c.type)}
                                 </span>
                               </td>
                               <td>
@@ -1320,7 +1323,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <Profile
                           key={c.id}
                           title={c.name}
-                          subtitle={`${c.type} customer · ${c.region}`}
+                          subtitle={`${customerTypeLabel(c.type)} · ${c.region}`}
                           customer={c}
                           notes={c.notes}
                           saveNotes={(text) => saveNotes('customer', c.id, text)}
@@ -1449,7 +1452,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           <button className="owner-card" onClick={() => openCustomer(c.id)}>
                             <Avatar name={c.name} customer={c} />
                             <div>
-                              <span>Customer · {c.type}</span>
+                              <span>Customer · {customerTypeLabel(c.type)}</span>
                               <strong>{c.name}</strong>
                             </div>
                             <ArrowUpRight size={16} />
@@ -1489,7 +1492,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     <div>
                       <strong>{c.name}</strong>
                       <span>
-                        {c.type} · {c.region}
+                        {customerTypeLabel(c.type)} · {c.region}
                       </span>
                     </div>
                     <ArrowUpRight size={15} />
@@ -1969,7 +1972,7 @@ function BookingDetail({
           <div>
             <strong>{c.name}</strong>
             <span>
-              {c.type} · {c.region}
+              {customerTypeLabel(c.type)} · {c.region}
             </span>
           </div>
           <ArrowUpRight size={16} />
@@ -2272,7 +2275,11 @@ function NewBooking({
         <span>
           <Clock3 size={14} />
           {s.duration} min <span>·</span>{' '}
-          <strong>{money(tariff(s, store.vehicles.find((v) => v.id === vehicleId)!.size))}</strong>
+          <strong>
+            {live && !store.vehicles.find((v) => v.id === vehicleId)?.size
+              ? 'Set vehicle size first'
+              : money(tariff(s, store.vehicles.find((v) => v.id === vehicleId)!.size))}
+          </strong>
         </span>
         <button className="btn primary" type="submit">
           <Plus size={15} />

@@ -2,7 +2,7 @@ import { Info } from 'lucide-react'
 import { Select } from './Select'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { DEMO_DATE, reminderQueue, whatsappLink } from './model'
+import { DEMO_DATE, reminderQueue, whatsappLink, customerTypeLabel } from './model'
 import type { Customer, Store, Region, Reminder } from './model'
 
 export function Messages({
@@ -230,7 +230,9 @@ export function CustomerDetails({
     [days, setDays] = useState(c.reminderDays ?? defaultDays),
     [phone, setPhone] = useState(c.phone ?? ''),
     [saved, setSaved] = useState(false),
-    [whatsappOptIn, setWhatsappOptIn] = useState(c.whatsappOptIn ?? false)
+    [whatsappOptIn, setWhatsappOptIn] = useState(c.whatsappOptIn ?? false),
+    [type, setType] = useState(c.type),
+    [region, setRegion] = useState(c.region)
   return (
     <>
       <details className="customer-details">
@@ -248,27 +250,57 @@ export function CustomerDetails({
                 .split('\n')
                 .map((x) => x.trim())
                 .filter(Boolean)
-            if (!list.length || !people.length) return
+            if (!people.length) return
             onSave({
               ...c,
               addresses: list,
-              address: list[0],
+              address: list[0] ?? '',
               contacts: people,
               contact: people[0],
               reminderDays: days,
               phone,
               whatsappOptIn,
+              type,
+              region,
             })
             setSaved(true)
           }}
         >
+          <div className="form-grid">
+            <label className="field">
+              Customer type
+              <Select
+                aria-label="Customer type"
+                value={type}
+                onChange={(e) => setType(e.target.value as Customer['type'])}
+              >
+                {(['Unclassified', 'Private', 'Business'] as const).map((t) => (
+                  <option key={t} value={t}>
+                    {customerTypeLabel(t)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="field">
+              Region
+              <Select
+                aria-label="Customer region"
+                value={region}
+                onChange={(e) => setRegion(e.target.value as Customer['region'])}
+              >
+                <option value="Unassigned">Not set</option>
+                <option>Geneva</option>
+                <option>Ticino</option>
+              </Select>
+            </label>
+          </div>
           <label className="field">
             Contacts · one per line
             <textarea required value={contacts} onChange={(e) => setContacts(e.target.value)} />
           </label>
           <label className="field">
             Saved addresses · one per line
-            <textarea required value={addresses} onChange={(e) => setAddresses(e.target.value)} />
+            <textarea value={addresses} onChange={(e) => setAddresses(e.target.value)} />
           </label>
           <label className="field">
             WhatsApp number

@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="12" fill="#243d36"/><path d="M13 29V11h9a6 6 0 0 1 0 12h-9m5-12v18" fill="none" stroke="#d7ef91" stroke-width="3"/></svg>
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="72" height="72" fill="#0E1415"/>
+<circle cx="8.91341" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="8.91341" cy="28.7415" r="3.91341" fill="white"/>
+<circle cx="16.7415" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="16.7415" cy="28.7415" r="3.91341" fill="white"/>
+<circle cx="16.5853" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="24.4134" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="32.0072" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="39.8431" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="47.5072" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="55.2572" cy="20.9134" r="3.91341" fill="white"/>
+<circle cx="55.3353" cy="28.7415" r="3.91341" fill="white"/>
+<circle cx="63.0853" cy="28.7415" r="3.91341" fill="white"/>
+<circle cx="63.0853" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="55.2572" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="24.4134" cy="44.3939" r="3.91341" fill="white"/>
+<circle cx="24.4134" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="32.0072" cy="44.3939" r="3.91341" fill="white"/>
+<circle cx="32.0072" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="39.8431" cy="44.3939" r="3.91341" fill="white"/>
+<circle cx="39.8431" cy="36.5677" r="3.91341" fill="white"/>
+<circle cx="47.5072" cy="44.3939" r="3.91341" fill="white"/>
+<circle cx="47.5072" cy="36.5677" r="3.91341" fill="white"/>
+<ellipse cx="12.3281" cy="48.347" rx="7.32806" ry="7.25133" fill="white"/>
+<ellipse cx="59.6718" cy="48.347" rx="7.32806" ry="7.25133" fill="white"/>
+</svg>

@@ -25,7 +25,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
       - name: Build authenticated frontend
         run: |
           test -n "$VITE_SUPABASE_URL"

@@ -1977,3 +1977,15 @@ tbody tr {
   gap: 16px;
   align-items: center;
 }
+
+.brand-icon img,
+.auth-brand > span img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.auth-brand > span {
+  overflow: hidden;
+  flex-shrink: 0;
+}

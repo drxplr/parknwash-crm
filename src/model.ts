@@ -4,7 +4,7 @@ export type Status = 'Confirmed' | 'Pending' | 'In progress' | 'Completed' | 'Ca
 export interface Customer {
   id: string
   name: string
-  type: 'Private' | 'Business'
+  type: 'Private' | 'Business' | 'Unclassified'
   region: Region | 'Unassigned'
   email: string
   contact: string
@@ -702,3 +702,6 @@ export function swissToday(now = new Date()) {
   const get = (t: string) => p.find((x) => x.type === t)!.value
   return `${get('year')}-${get('month')}-${get('day')}`
 }
+
+export const customerTypeLabel = (type: Customer['type']) =>
+  type === 'Unclassified' ? 'Not set' : type

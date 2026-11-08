@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Store, Region, Status } from './model'
+import type { Store, Region, Status, Customer } from './model'
 import { swissInstant } from './model'
 
 type Row = Record<string, unknown>
@@ -56,7 +56,7 @@ export function snapshotToStore(s: Snapshot): Store {
       return {
         id: str(c, 'id'),
         name: str(c, 'name'),
-        type: c.type as 'Private' | 'Business',
+        type: c.type as Customer['type'],
         region: region(c.region_id) ?? 'Unassigned',
         email: contacts[0] ? str(contacts[0], 'email') : '',
         contact: labels[0] ?? str(c, 'name'),
@@ -75,7 +75,9 @@ export function snapshotToStore(s: Snapshot): Store {
       id: str(v, 'id'),
       customerId: str(v, 'customer_id'),
       model:
-        [str(v, 'make'), str(v, 'model')].filter(Boolean).join(' ') ||
+        (str(v, 'model').toLowerCase().startsWith(str(v, 'make').toLowerCase())
+          ? str(v, 'model')
+          : [str(v, 'make'), str(v, 'model')].filter(Boolean).join(' ')) ||
         str(v, 'source_vehicle_name') ||
         'Vehicle',
       plate: str(v, 'registration'),
@@ -108,7 +110,7 @@ export function snapshotToStore(s: Snapshot): Store {
       title: str(a, 'title'),
       text: str(a, 'text'),
       kind: a.kind as Store['activities'][number]['kind'],
-      author: 'Team',
+      author: a.actor_id ? 'Team' : 'Import',
     })),
     sentMessages: s.messages.map((m) => ({
       id: str(m, 'id'),

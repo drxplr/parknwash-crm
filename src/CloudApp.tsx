@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CarFront, ArrowRight, LogOut, RefreshCw } from 'lucide-react'
+import { ArrowRight, LogOut, RefreshCw } from 'lucide-react'
 import App from './App'
 import { loadSnapshot, snapshotToStore, storeChanges } from './cloudRepository'
 import type { Snapshot } from './cloudRepository'
@@ -235,7 +235,7 @@ export default function CloudApp() {
       <section className="auth-card">
         <div className="auth-brand">
           <span>
-            <CarFront size={26} />
+            <img src={`${import.meta.env.BASE_URL}brand-mark.svg`} alt="" aria-hidden="true" />
           </span>
           park n wash
         </div>

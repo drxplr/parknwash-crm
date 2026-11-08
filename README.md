@@ -29,4 +29,6 @@ The Supabase schema/RPC contract must already exist before using this frontend. 
 
 ## Pilot limits
 
-Real customer imports require reviewed mapping/counts and an authenticated round-trip test first. The original Numbers file and local candidates have not been imported. Payment status is an internal record, not payment-provider reconciliation. Manually marked messages are operator assertions, not WhatsApp delivery receipts. The frontend has no built-in invitation sender, password-reset flow without SMTP, or team-role management UI yet.
+Real customer imports require reviewed mapping/counts and an authenticated round-trip test first. The authorized customer import is stored only in Supabase; the original Numbers file and local import payload are excluded from this repository. Missing source classifications and regions stay explicitly unspecified and can be corrected in customer details. Payment status is an internal record, not payment-provider reconciliation. Manually marked messages are operator assertions, not WhatsApp delivery receipts. The frontend has no built-in invitation sender, password-reset flow without SMTP, or team-role management UI yet.
+
+Branding uses the owner-supplied SVG in `public/brand-mark.svg` and `public/favicon.svg`. The publication workflow builds without running the test suite.
