@@ -173,7 +173,7 @@ export function storeChanges(base: Snapshot, before: Store, after: Store): Chang
       type: c.type,
       region_id: regionId(c.region),
       notes: c.notes,
-      ...(c.colorKey ? {color_key:c.colorKey} : {}),
+      ...(c.colorKey ? { color_key: c.colorKey } : {}),
       reminder_days: c.reminderDays ?? null,
       whatsapp_marketing_opt_in: c.whatsappOptIn ?? false,
     })

@@ -623,7 +623,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <kbd>⌘ K</kbd>
             </button>
             <span className="topbar-avatar">
-              <Avatar small name="Demo Manager" />
+              <Avatar small name={cloud?.label ?? 'Demo Manager'} />
             </span>
           </header>
           <main>
@@ -672,7 +672,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   : page === 'Bookings'
                     ? 'Zurich time'
                     : 'Workspace'}
-                <span className="demo-label">Demo</span>
+                {!cloud && <span className="demo-label">Demo</span>}
               </div>
               <div className="filters">
                 <label className="select-wrap">
@@ -1382,7 +1382,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                   <div>
                                     <strong>{v.model}</strong>
                                     <span>
-                                      {v.plate} · {v.color}
+                                      {[v.plate, v.color].filter(Boolean).join(' · ') ||
+                                        'Vehicle details needed'}
                                     </span>
                                   </div>
                                   <ChevronRight size={16} />
@@ -1398,7 +1399,10 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                       return (
                         <Profile
                           title={v.model}
-                          subtitle={`${v.plate} · ${v.color} · ${v.size}`}
+                          subtitle={
+                            [v.plate, v.color, v.size].filter(Boolean).join(' · ') ||
+                            'Vehicle details needed'
+                          }
                           customer={c}
                           notes={v.notes}
                           saveNotes={(text) => saveNotes('vehicle', v.id, text)}
@@ -1522,7 +1526,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 )}
             </div>
             <div className="command-footer">
-              <Command size={12} /> K to search anytime <span>Fictional demo data only</span>
+              <Command size={12} /> K to search anytime{' '}
+              <span>{cloud ? 'Team workspace' : 'Fictional demo data only'}</span>
             </div>
           </Dialog>
         )}
@@ -1974,7 +1979,7 @@ function BookingDetail({
           <div>
             <strong>{v.model}</strong>
             <span>
-              {v.plate} · {v.color}
+              {[v.plate, v.color].filter(Boolean).join(' · ') || 'Vehicle details needed'}
             </span>
           </div>
           <ArrowUpRight size={16} />

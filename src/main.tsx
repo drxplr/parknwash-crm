@@ -13,7 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </main>
       }
     >
-      {(import.meta.env.VITE_CRM_MODE ?? (import.meta.env.PROD ? 'cloud' : 'demo')) === 'cloud' ? <CloudApp /> : <App />}
+      {(import.meta.env.VITE_CRM_MODE ?? (import.meta.env.PROD ? 'cloud' : 'demo')) === 'cloud' ? (
+        <CloudApp />
+      ) : (
+        <App />
+      )}
     </Suspense>
   </React.StrictMode>,
 )
