@@ -7,6 +7,7 @@ import App from './App'
 import { loadSnapshot, snapshotToStore, storeChanges } from './cloudRepository'
 import type { Snapshot } from './cloudRepository'
 import type { Store } from './model'
+import { createTabAuthStorage } from './authStorage'
 
 const config = import.meta.env
 const emailAuthEnabled = config.VITE_EMAIL_AUTH_ENABLED === 'true'
@@ -16,8 +17,7 @@ const client =
   config.VITE_SUPABASE_URL && config.VITE_SUPABASE_PUBLISHABLE_KEY
     ? createClient(config.VITE_SUPABASE_URL, config.VITE_SUPABASE_PUBLISHABLE_KEY, {
         auth: {
-          storage: sessionStorage,
-          storageKey: 'pnw-pilot-auth',
+          ...createTabAuthStorage(),
           persistSession: true,
           flowType: 'implicit',
         },
@@ -37,6 +37,8 @@ export default function CloudApp() {
   const [updatesAvailable, setUpdatesAvailable] = useState(false)
   const sequence = useRef(0),
     snapshotRef = useRef<Snapshot | null>(null)
+  const activeUser = useRef<string | null>(null),
+    signedOut = useRef(false)
   snapshotRef.current = snapshot
   useEffect(() => {
     if (!client) {
@@ -44,23 +46,30 @@ export default function CloudApp() {
       return
     }
     let active = true
+    const acceptSession = (next: Session | null) => {
+      if (!active || (signedOut.current && next)) return
+      const id = next?.user.id ?? null
+      if (!next || activeUser.current !== id) {
+        sequence.current++
+        snapshotRef.current = null
+        setSnapshot(null)
+        setLoading(false)
+        setUpdatesAvailable(false)
+      }
+      activeUser.current = id
+      setSession(next)
+      setReady(true)
+    }
+    const initialSequence = sequence.current
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange((_event, next) => {
-      if (!active) return
-      setSession(next)
-      setReady(true)
-      if (!next) {
-        sequence.current++
-        setSnapshot(null)
-        snapshotRef.current = null
-      }
+      acceptSession(next)
     })
     void client.auth.getSession().then(({ data, error }) => {
-      if (active) {
-        setSession(data.session)
+      if (active && initialSequence === sequence.current) {
+        acceptSession(data.session)
         setError(error?.message ?? '')
-        setReady(true)
       }
     })
     return () => {
@@ -69,7 +78,7 @@ export default function CloudApp() {
     }
   }, [])
   async function load() {
-    if (!client || !session) return
+    if (!client || !session || activeUser.current !== session.user.id) return
     const seq = ++sequence.current
     setLoading(true)
     setError('')
@@ -105,6 +114,7 @@ export default function CloudApp() {
   useEffect(() => {
     if (!client || !session || !snapshot) return
     const ws = snapshot.workspace.id
+    const user = session.user.id
     let active = true
     const timer = setInterval(() => {
       void client
@@ -112,8 +122,18 @@ export default function CloudApp() {
         .select('revision')
         .eq('id', ws)
         .maybeSingle()
-        .then(({ data, error }) => {
-          if (!active || error) return
+        .then(({ data, error, status }) => {
+          if (!active || activeUser.current !== user || snapshotRef.current?.workspace.id !== ws)
+            return
+          if (error) {
+            if (status === 401 || status === 403) {
+              sequence.current++
+              snapshotRef.current = null
+              setSnapshot(null)
+              setError('Your session is no longer authorized. Sign in again.')
+            }
+            return
+          }
           if (!data) {
             sequence.current++
             setSnapshot(null)
@@ -131,6 +151,7 @@ export default function CloudApp() {
   async function login(event: FormEvent) {
     event.preventDefault()
     if (!client) return
+    signedOut.current = false
     setLoading(true)
     setError('')
     setSent(false)
@@ -155,18 +176,30 @@ export default function CloudApp() {
     }
   }
   async function signOut() {
+    signedOut.current = true
+    activeUser.current = null
     // Clear customer state before awaiting the network, including offline logout.
     sequence.current++
     setSnapshot(null)
     snapshotRef.current = null
     setSession(null)
+    setLoading(false)
+    setUpdatesAvailable(false)
+    setPassword('')
     setError('')
-    await client?.auth.signOut({ scope: 'local' })
+    try {
+      const result = await client?.auth.signOut({ scope: 'local' })
+      if (result?.error) setError('Signed out of this tab. Server sign-out could not be confirmed.')
+    } catch {
+      setError('Could not finish sign-out. Close this tab to clear its session.')
+    }
   }
   async function commit(before: Store, after: Store): Promise<Store> {
     const base = snapshotRef.current
     if (!client || !base) throw new Error('Sign in again before saving.')
     const seq = sequence.current
+    const user = activeUser.current
+    if (!user || user !== session?.user.id) throw new Error('Sign in again before saving.')
     const changes = storeChanges(base, before, after)
     if (!changes.length) return before
     const { error } = await client.rpc('crm_commit', {
@@ -174,6 +207,8 @@ export default function CloudApp() {
       expected_revision: base.workspace.revision,
       changes,
     })
+    if (seq !== sequence.current || activeUser.current !== user)
+      throw new Error('Session changed. Sign in again.')
     if (error) {
       if (error.code === '42501') {
         setSnapshot(null)
