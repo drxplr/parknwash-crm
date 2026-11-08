@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Clock3 } from 'lucide-react'
 import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
 import { layoutBookings, minutes } from './calendarModel'
 import { customerColorStyle } from './customerColors'
@@ -15,6 +15,7 @@ export function ScheduleCalendar({
   date,
   start,
   range,
+  canCreate = true,
   onOpen,
   onDay,
   onCreate,
@@ -26,6 +27,7 @@ export function ScheduleCalendar({
   date: string
   start: string
   range: 'Day' | 'Week'
+  canCreate?: boolean
   onOpen: (id: string) => void
   onDay: (date: string) => void
   onCreate: (context: BookingStart) => void
@@ -42,20 +44,91 @@ export function ScheduleCalendar({
         }))
       : team.map((s) => ({ key: s.id, date, staffId: s.id, name: s.name, subtitle: s.region }))
   useEffect(() => {
-    if (scroll.current) scroll.current.scrollTop = hourHeight
+    if (scroll.current) {
+      const earliest = bookings.length ? Math.min(...bookings.map((b) => minutes(b.time))) : 540
+      scroll.current.scrollTop = Math.max(0, ((earliest - 480) * hourHeight) / 60)
+    }
   }, [start, date, range])
+  if (range === 'Week')
+    return (
+      <div className="week-planner" aria-label="Weekly booking calendar">
+        {columns.map((col) => {
+          const items = bookings
+            .filter((b) => b.date === col.date)
+            .sort((a, b) => a.time.localeCompare(b.time))
+          return (
+            <section
+              className={`planner-day ${col.date === today ? 'is-today' : ''}`}
+              key={col.key}
+            >
+              <button
+                className="planner-heading"
+                onClick={() => onDay(col.date)}
+                aria-label={`Open ${dayLabel(col.date)} staff schedule`}
+              >
+                <span>{col.name}</span>
+                <strong>{Number(col.date.slice(-2))}</strong>
+                <small>{items.length} bookings</small>
+              </button>
+              <div className="planner-events">
+                {items.map((b) => {
+                  const v = store.vehicles.find((v) => v.id === b.vehicleId)!
+                  const c = store.customers.find((c) => c.id === v.customerId)!
+                  const end = minutes(b.time) + b.duration
+                  const endTime = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
+                  return (
+                    <button
+                      key={b.id}
+                      className={`planner-event ${b.status === 'Cancelled' ? 'cancelled' : ''}`}
+                      style={customerColorStyle(c)}
+                      onClick={() => onOpen(b.id)}
+                      title={`${c.name} · ${v.model} · ${b.service} · ${b.status}`}
+                    >
+                      <span className="planner-time">
+                        {b.time}
+                        <small>– {endTime}</small>
+                      </span>
+                      <strong>{c.name}</strong>
+                      <span className="planner-car">{v.model}</span>
+                      <span className="planner-package">{b.service.split(' · ')[0]}</span>
+                      <span
+                        className={`planner-status ${b.status.toLowerCase().replaceAll(' ', '-')}`}
+                      >
+                        {b.status}
+                        <span className="planner-staff">
+                          {b.staffIds
+                            .map((id) => team.find((s) => s.id === id)?.initials)
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+                {!items.length && <p className="planner-empty">No bookings</p>}
+              </div>
+              {canCreate && (
+                <button
+                  className="planner-add"
+                  onClick={() => onCreate({ date: col.date, time: '09:00' })}
+                  aria-label={`Add booking on ${dayLabel(col.date)}`}
+                >
+                  <Plus size={14} /> Book
+                </button>
+              )}
+            </section>
+          )
+        })}
+      </div>
+    )
   if (!columns.length) return <p className="operation-caption">No staff match these filters.</p>
   return (
     <>
-      <div
-        className="schedule-scroll"
-        ref={scroll}
-        aria-label={range === 'Week' ? 'Weekly time calendar' : 'Daily staff calendar'}
-      >
+      <div className="schedule-scroll" ref={scroll} aria-label="Daily staff calendar">
         <div
-          className={`schedule-grid ${range === 'Day' ? 'day-mode' : 'week-mode'}`}
+          className="schedule-grid day-mode"
           style={{
-            gridTemplateColumns: `52px repeat(${columns.length}, minmax(${range === 'Week' ? 170 : 210}px,1fr))`,
+            gridTemplateColumns: `52px repeat(${columns.length}, minmax(190px,1fr))`,
           }}
         >
           <div className="schedule-heading schedule-zone">Zurich</div>
@@ -66,17 +139,17 @@ export function ScheduleCalendar({
             >
               <button
                 className="schedule-column-title"
-                onClick={() =>
-                  range === 'Week'
-                    ? onDay(col.date)
-                    : onCreate({ date: col.date, time: '09:00', staffId: col.staffId })
-                }
-                aria-label={
-                  range === 'Week'
-                    ? `Open ${dayLabel(col.date)} staff schedule`
-                    : `Book with ${col.name}`
-                }
+                onClick={() => onCreate({ date: col.date, time: '09:00', staffId: col.staffId })}
+                disabled={!canCreate}
+                aria-label={`Book with ${col.name}`}
               >
+                <span className="schedule-staff-avatar">
+                  {col.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join('')}
+                </span>
                 <strong>{col.name}</strong>
                 <span>{col.subtitle}</span>
               </button>
@@ -98,13 +171,15 @@ export function ScheduleCalendar({
                 key={col.key}
                 className={`schedule-lane ${col.date === today ? 'is-today' : ''}`}
               >
-                <FreeTimes
-                  date={col.date}
-                  staffId={col.staffId}
-                  team={team}
-                  store={store}
-                  onCreate={onCreate}
-                />
+                {canCreate && (
+                  <FreeTimes
+                    date={col.date}
+                    staffId={col.staffId}
+                    team={team}
+                    store={store}
+                    onCreate={onCreate}
+                  />
+                )}
                 {layoutBookings(items).map(({ booking: b, column, columns: lanes }) => {
                   const v = store.vehicles.find((v) => v.id === b.vehicleId)!,
                     c = store.customers.find((c) => c.id === v.customerId)!
@@ -127,13 +202,14 @@ export function ScheduleCalendar({
                         width: `calc(${100 / lanes}% - 8px)`,
                       }}
                     >
-                      <span className="schedule-event-time">{b.time}</span>
+                      <span className="schedule-event-time">
+                        <Clock3 size={10} />
+                        {b.time} · {b.duration} min
+                        {b.duration <= 60 && <small>{b.status}</small>}
+                      </span>
                       <strong>{c.name}</strong>
                       <span>{v.model}</span>
-                      <small>{b.status}</small>
-                      {range === 'Week' && (
-                        <small className="schedule-event-team">{teamName}</small>
-                      )}
+                      <small className="schedule-status">{b.status}</small>
                     </button>
                   )
                 })}
@@ -143,8 +219,8 @@ export function ScheduleCalendar({
         </div>
       </div>
       <p className="schedule-hint">
-        Select a free time to book{range === 'Week' ? ' · Select a day to see staff schedules' : ''}
-        . Times in Zurich.
+        {bookings.length === 0 ? 'No bookings in this period. ' : ''}
+        {canCreate ? 'Select a free time to book' : 'Calendar overview'}. Times in Zurich.
       </p>
     </>
   )

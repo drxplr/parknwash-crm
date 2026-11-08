@@ -356,6 +356,9 @@ export default function CloudApp() {
           </p>
         )}
         <p className="auth-footnote">Access is limited to authorized team members.</p>
+        <a className="demo-switch" href="?demo=1">
+          Explore with fictional demo data <ArrowRight size={14} />
+        </a>
       </section>
     </main>
   )

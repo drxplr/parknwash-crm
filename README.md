@@ -2,6 +2,15 @@
 
 React + TypeScript + Vite + Tailwind frontend with Supabase Auth and shared, workspace-scoped persistence. No Vercel is used.
 
+## Live and demo
+
+- Team workspace: https://drxplr.github.io/parknwash-crm/
+- Fictional demo: https://drxplr.github.io/parknwash-crm/?demo=1
+
+The explicit demo route mounts only the local fixture app and does not initialize the Supabase client. It uses a separate demo storage key; no cloud snapshot is copied into the demo. Return to the team workspace using the sidebar link. The default booking view is a weekly day-by-day planner; opening a day shows the hourly staff schedule. Customers and vehicles share one directory with independent views, search and sorting.
+
+Website package prices and durations were verified on 8 November 2026. Region/size variants preserve exact quotes without changing the backend schema. Existing booking quotes stay fixed. Legacy vehicle-size labels map to S (Compact), M (Sedan/Estate), L+ (large SUV); unknown sizes must be confirmed before a real booking.
+
 ## Run
 
 Use Node.js 24 and pnpm 11. Copy `.env.example` to `.env.local`, fill in the project URL and **publishable** key, then run `pnpm install`, `pnpm dev`. `pnpm test` runs behavior tests; `pnpm build` checks TypeScript and builds `dist/`.

@@ -1,3 +1,4 @@
+import { websiteServices } from './websiteCatalog'
 import { assignCustomerColors } from './customerColors'
 export type Region = 'Geneva' | 'Ticino'
 export type Status = 'Confirmed' | 'Pending' | 'In progress' | 'Completed' | 'Cancelled'
@@ -592,7 +593,7 @@ for (const b of seed.bookings) {
     })
   }
 }
-export const STORAGE_KEY = 'parknwash-crm-demo-v1'
+export const STORAGE_KEY = 'parknwash-crm-demo-v2'
 export function loadStore(): Store {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -619,6 +620,52 @@ export function loadStore(): Store {
 }
 export function createDemoStore(): Store {
   const store = structuredClone(seed)
+  store.settings.services = websiteServices()
+  store.bookings = store.bookings.filter((b) => b.date < DEMO_DATE)
+  const starts = ['09:00', '10:30', '13:00', '15:30']
+  for (let day = 0; day < 6; day++) {
+    for (let slot = 0; slot < (day === 5 ? 2 : 4); slot++) {
+      const v = store.vehicles[(day * 3 + slot) % store.vehicles.length]
+      const c = store.customers.find((c) => c.id === v.customerId)!
+      const size = v.size === 'Compact' ? 'S' : v.size === 'SUV' ? 'L+' : 'M'
+      const pkg = slot % 3 === 0 ? 'Complete Care' : 'Essential Care'
+      const svc = store.settings.services.find((s) => s.name === `${pkg} · ${c.region} · ${size}`)!
+      const members = store.settings.staff.filter((s) => s.region === c.region)
+      const id = `PNW-${1100 + day * 4 + slot}`
+      store.bookings.push({
+        id,
+        vehicleId: v.id,
+        date: addDays(DEMO_DATE, day),
+        time: starts[slot],
+        duration: svc.duration,
+        service: svc.name,
+        price: tariff(svc, v.size),
+        staffIds: [members[slot % members.length].id],
+        status: day === 0 && slot === 0 ? 'In progress' : slot === 3 ? 'Pending' : 'Confirmed',
+        paid: slot === 1,
+        address: c.address,
+        notes: slot === 3 ? 'Confirm access before arrival.' : '',
+        arrivalWindow: 15,
+      })
+    }
+  }
+  store.activities = store.activities.filter(
+    (a) => !a.bookingId || store.bookings.some((b) => b.id === a.bookingId),
+  )
+  for (const b of store.bookings.filter((b) => b.date >= DEMO_DATE)) {
+    const v = store.vehicles.find((v) => v.id === b.vehicleId)!
+    store.activities.push({
+      id: `demo-${b.id}`,
+      bookingId: b.id,
+      customerId: v.customerId,
+      vehicleId: v.id,
+      at: `2026-11-08T12:00:00+01:00`,
+      title: 'Booking created',
+      text: `${b.service} · ${b.date} at ${b.time}`,
+      kind: 'booking',
+      author: 'Demo manager',
+    })
+  }
   return { ...store, customers: assignCustomerColors(store.customers) }
 }
 

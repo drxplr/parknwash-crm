@@ -1,3 +1,5 @@
+import { DatePicker } from './DatePicker'
+import { serviceFits, sizeLabels } from './websiteCatalog'
 import { ScheduleCalendar } from './Calendar'
 import type { BookingStart } from './Calendar'
 import { startOfWeek, calendarRangeLabel } from './calendarModel'
@@ -49,7 +51,7 @@ import {
   swissToday,
 } from './model'
 import type { Activity, Booking, Customer, Region, Status, Store, Vehicle } from './model'
-type Page = 'Overview' | 'Bookings' | 'Customers' | 'Vehicles' | 'Messages' | 'Settings'
+type Page = 'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings'
 type Detail = { kind: 'booking' | 'customer' | 'vehicle'; id: string } | null
 const initials = (name: string) =>
   name
@@ -207,10 +209,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     [addCustomerOpen, setAddCustomerOpen] = useState(false)
   const [view, setView] = useState<'List' | 'Calendar'>('Calendar'),
     [date, setDate] = useState(today),
-    [range, setRange] = useState<'Day' | 'Week'>('Day'),
+    [range, setRange] = useState<'Day' | 'Week'>('Week'),
     [status, setStatus] = useState('All active'),
     [customerType, setCustomerType] = useState('All customers'),
-    [tableSearch, setTableSearch] = useState('')
+    [tableSearch, setTableSearch] = useState(''),
+    [directoryView, setDirectoryView] = useState<'Customers' | 'Vehicles'>('Customers'),
+    [sort, setSort] = useState('Name A–Z')
   const busy = useRef(false),
     queuedToast = useRef('')
   const [saving, setSaving] = useState(false),
@@ -303,6 +307,28 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
           (status === 'All active' ? b.status !== 'Cancelled' : b.status === status)),
     )
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+  const lastVisit = (customerId: string, vehicleId?: string) =>
+    store.bookings
+      .filter(
+        (b) =>
+          b.status === 'Completed' &&
+          (vehicleId ? b.vehicleId === vehicleId : owner(b).id === customerId),
+      )
+      .map((b) => b.date + b.time)
+      .sort()
+      .at(-1) ?? ''
+  function compareCustomers(a: Customer, b: Customer) {
+    if (sort === 'Name Z–A') return b.name.localeCompare(a.name)
+    if (sort === 'Region') return a.region.localeCompare(b.region) || a.name.localeCompare(b.name)
+    if (sort === 'Most recent visit')
+      return lastVisit(b.id).localeCompare(lastVisit(a.id)) || a.name.localeCompare(b.name)
+    if (sort === 'Most vehicles')
+      return (
+        store.vehicles.filter((v) => v.customerId === b.id).length -
+          store.vehicles.filter((v) => v.customerId === a.id).length || a.name.localeCompare(b.name)
+      )
+    return a.name.localeCompare(b.name)
+  }
   const navigate = (p: Page) => {
     setPage(p)
     setTableSearch('')
@@ -445,7 +471,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 </span>
               </td>
               <td>
-                {b.service}
+                {b.service.split(' · ')[0]}
                 <span className="sub">
                   <MapPin size={11} />
                   {owner(b).region}
@@ -539,7 +565,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 { name: 'Overview', icon: LayoutDashboard },
                 { name: 'Bookings', icon: CalendarDays },
                 { name: 'Customers', icon: Users },
-                { name: 'Vehicles', icon: CarFront },
                 { name: 'Messages', icon: MessageSquare },
                 { name: 'Settings', icon: SlidersHorizontal },
               ] as const
@@ -547,6 +572,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <button
                 key={name}
                 className={`nav-link ${page === name ? 'active' : ''}`}
+                aria-current={page === name ? 'page' : undefined}
                 onClick={() => navigate(name)}
               >
                 <Icon size={17} />
@@ -569,10 +595,14 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 onClick={() => setRegion(region === r ? 'All regions' : r)}
                 key={r}
                 className={region === r ? 'selected' : ''}
+                aria-pressed={region === r}
               >
                 <span className={`location-dot ${r === 'Ticino' ? 'purple' : ''}`} />
                 {r}
-                <span>{store.customers.filter((c) => c.region === r).length}</span>
+                <span>
+                  {region === r && <Check size={14} aria-hidden="true" />}
+                  {store.customers.filter((c) => c.region === r).length}
+                </span>
               </button>
             ))}
           </div>
@@ -580,13 +610,17 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             <div className="demo-card">
               <div>
                 <span className="live-dot" />
-                {cloud ? 'Shared workspace' : 'Demo workspace'}
+                {cloud ? 'Shared workspace' : 'Demo · fictional data'}
               </div>
 
               <button onClick={() => (cloud ? cloud.signOut() : setResetOpen(true))}>
                 {cloud ? 'Sign out' : 'Reset demo'} <RotateCcw size={12} />
               </button>
             </div>
+            <a className="demo-switch" href={cloud ? '?demo=1' : '?'}>
+              {cloud ? 'Explore demo' : 'Back to live workspace'}
+              <ArrowUpRight size={13} />
+            </a>
             <div className="profile">
               <Avatar name={cloud?.label ?? 'Demo Manager'} />
               <div>
@@ -633,32 +667,44 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 <h1>{page === 'Overview' ? 'Today' : page}</h1>
               </div>
               {page === 'Customers' && cloud?.role !== 'viewer' && (
-                <button className="btn" onClick={() => setAddCustomerOpen(true)}>
+                <button className="btn primary" onClick={() => setAddCustomerOpen(true)}>
                   <Plus size={16} />
                   Add customer
                 </button>
               )}
-              <button
-                className="btn primary"
-                disabled={
-                  !!cloud &&
-                  (cloud.role === 'viewer' ||
-                    !store.settings.services.length ||
-                    !store.settings.staff.length ||
-                    !store.vehicles.some((v) => store.customers.some((c) => c.id === v.customerId)))
-                }
-                onClick={() => {
-                  setBookingStart({
-                    date,
-                    time: '09:00',
-                    staffId: staffFilter === 'All staff' ? undefined : staffFilter,
-                  })
-                  setNewBooking(true)
-                }}
-              >
-                <Plus size={16} />
-                New booking
-              </button>
+              {(page === 'Bookings' || page === 'Overview') && (
+                <button
+                  className="btn primary"
+                  disabled={cloud?.role === 'viewer'}
+                  onClick={() => {
+                    if (!store.settings.services.length || !staff.length) {
+                      if (!cloud || cloud.role === 'admin') navigate('Settings')
+                      else setToast('Ask an administrator to add services and staff.')
+                      return
+                    }
+                    if (
+                      !store.vehicles.some((v) =>
+                        store.customers.some((c) => c.id === v.customerId),
+                      )
+                    ) {
+                      navigate('Customers')
+                      return
+                    }
+
+                    setBookingStart({
+                      date,
+                      time: '09:00',
+                      staffId: staffFilter === 'All staff' ? undefined : staffFilter,
+                    })
+                    setNewBooking(true)
+                  }}
+                >
+                  <Plus size={16} />
+                  {!store.settings.services.length || !staff.length
+                    ? 'Set up calendar'
+                    : 'New booking'}
+                </button>
+              )}
             </div>
             <div className="context-bar">
               <div className="context-date">
@@ -786,7 +832,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <span>Zurich time</span>
                         <span>
                           {todays.length} bookings ·{' '}
-                          {todays.reduce((n, b) => n + b.duration, 0) / 60} service hours
+                          {(todays.reduce((n, b) => n + b.duration, 0) / 60).toFixed(1)} service
+                          hours
                         </span>
                       </div>
                     </section>
@@ -876,9 +923,10 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <section className="card">
                 <div className="booking-toolbar">
                   <div className="segmented">
-                    {(['List', 'Calendar'] as const).map((v) => (
+                    {(['Calendar', 'List'] as const).map((v) => (
                       <button
                         className={view === v ? 'selected' : ''}
+                        aria-pressed={view === v}
                         key={v}
                         onClick={() => setView(v)}
                       >
@@ -899,30 +947,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     >
                       <ChevronLeft size={16} />
                     </button>
-                    <label className="calendar-date-jump">
-                      <span>{calendarRangeLabel(rangeStart, rangeEnd)}</span>
-                      <CalendarDays size={14} />
-                      <input
-                        type="date"
-                        aria-label="Go to date"
-                        value={date}
-                        min="2020-01-01"
-                        max="2100-12-31"
-                        onInput={(e) => {
-                          if (e.currentTarget.value) setDate(e.currentTarget.value)
-                        }}
-                        onChange={(e) => {
-                          if (e.target.value) setDate(e.target.value)
-                        }}
-                        onClick={(e) => {
-                          try {
-                            e.currentTarget.showPicker()
-                          } catch {
-                            /* Native input remains keyboard-accessible. */
-                          }
-                        }}
-                      />
-                    </label>
+                    <DatePicker
+                      value={date}
+                      today={today}
+                      label={calendarRangeLabel(rangeStart, rangeEnd)}
+                      onChange={setDate}
+                    />
                     <button
                       className="icon-btn"
                       aria-label="Next date range"
@@ -960,22 +990,30 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     </Select>
                   </div>
                 </div>
-                {view === 'Calendar' && (
-                  <div className="calendar-legend" aria-label="Client colors">
-                    <span>Clients</span>
-                    {store.customers
-                      .filter((c) => visibleBookings.some((b) => owner(b).id === c.id))
-                      .map((c) => (
-                        <button
-                          key={c.id}
-                          style={customerColorStyle(c)}
-                          onClick={() => openCustomer(c.id)}
-                          title={`Open ${c.name}`}
-                        >
-                          <span className="client-dot" />
-                          {c.name}
-                        </button>
-                      ))}
+                <div className="schedule-context">
+                  <span>
+                    <strong>{visibleBookings.length}</strong> bookings ·{' '}
+                    {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
+                  </span>
+                  {!cloud && <span className="demo-label">Fictional demo bookings</span>}
+                </div>
+                {cloud && (!staff.length || !store.settings.services.length) && (
+                  <div className="setup-notice">
+                    <div>
+                      <strong>Finish setting up your calendar</strong>
+                      <p>
+                        {!store.settings.services.length ? 'Add your care packages and ' : 'Add '}
+                        the real team to start scheduling.
+                      </p>
+                    </div>
+                    {cloud.role === 'admin' && (
+                      <button className="btn" onClick={() => navigate('Settings')}>
+                        Open settings <ArrowRight size={14} />
+                      </button>
+                    )}
+                    <a className="btn" href="?demo=1">
+                      Preview with demo bookings
+                    </a>
                   </div>
                 )}
                 {(status !== 'All active' ||
@@ -1019,6 +1057,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     date={date}
                     start={rangeStart}
                     range={range}
+                    canCreate={
+                      (!cloud || cloud.role !== 'viewer') &&
+                      !!store.settings.services.length &&
+                      !!staff.length &&
+                      !!store.vehicles.length
+                    }
                     onOpen={(id) => setDetail({ kind: 'booking', id })}
                     onDay={(day) => {
                       setDate(day)
@@ -1029,6 +1073,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         !cloud ||
                         (cloud.role !== 'viewer' &&
                           store.settings.services.length &&
+                          staff.length &&
                           store.vehicles.length)
                       ) {
                         setBookingStart(context)
@@ -1046,12 +1091,48 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               </section>
             )}
             {page === 'Customers' && (
+              <div className="directory-controls">
+                <div className="segmented" aria-label="Directory view">
+                  {(['Customers', 'Vehicles'] as const).map((v) => (
+                    <button
+                      key={v}
+                      aria-pressed={directoryView === v}
+                      className={directoryView === v ? 'selected' : ''}
+                      onClick={() => {
+                        setDirectoryView(v)
+                        setTableSearch('')
+                      }}
+                    >
+                      {v === 'Customers' ? <Users size={15} /> : <CarFront size={15} />} {v}
+                      <span className="count-pill">
+                        {v === 'Customers'
+                          ? store.customers.filter(inRegion).length
+                          : store.vehicles.filter((v) => inRegion(customer(v.customerId))).length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <Select
+                  aria-label="Sort directory"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  {['Name A–Z', 'Name Z–A', 'Region', 'Most recent visit', 'Most vehicles'].map(
+                    (s) => (
+                      <option key={s}>{s}</option>
+                    ),
+                  )}
+                </Select>
+              </div>
+            )}
+            {page === 'Customers' && directoryView === 'Customers' && (
               <section className="card">
                 <div className="listing-toolbar">
                   <div className="tabs">
                     {['All customers', 'Private', 'Business', 'Unclassified'].map((t) => (
                       <button
                         className={customerType === t ? 'selected' : ''}
+                        aria-pressed={customerType === t}
                         key={t}
                         onClick={() => setCustomerType(t)}
                       >
@@ -1071,7 +1152,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     <input
                       value={tableSearch}
                       onChange={(e) => setTableSearch(e.target.value)}
-                      placeholder="Find a customer..."
+                      placeholder="Name, phone, car or registration…"
                       aria-label="Search customers"
                     />
                   </label>
@@ -1083,7 +1164,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <th>Customer</th>
                         <th>Type</th>
                         <th>Region</th>
-                        <th>Vehicles</th>
+                        <th>Cars & registrations</th>
                         <th>Last visit</th>
                         <th className="align-right">Lifetime value</th>
                         <th />
@@ -1095,8 +1176,18 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           (c) =>
                             inRegion(c) &&
                             (customerType === 'All customers' || c.type === customerType) &&
-                            matches(tableSearch, c.name, c.contact),
+                            matches(
+                              tableSearch,
+                              c.name,
+                              c.contact,
+                              c.email,
+                              c.phone ?? '',
+                              ...store.vehicles
+                                .filter((v) => v.customerId === c.id)
+                                .flatMap((v) => [v.model, v.plate]),
+                            ),
                         )
+                        .sort((a, b) => compareCustomers(a, b))
                         .map((c) => {
                           const bs = store.bookings.filter(
                             (b) => owner(b).id === c.id && b.status === 'Completed',
@@ -1136,8 +1227,26 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                 {c.region}
                               </td>
                               <td>
-                                {store.vehicles.filter((v) => v.customerId === c.id).length}{' '}
-                                vehicles
+                                <div className="directory-cars">
+                                  {store.vehicles
+                                    .filter((v) => v.customerId === c.id)
+                                    .slice(0, 2)
+                                    .map((v) => (
+                                      <span key={v.id}>
+                                        {v.model}
+                                        {v.plate && <small>{v.plate}</small>}
+                                      </span>
+                                    ))}
+                                  {store.vehicles.filter((v) => v.customerId === c.id).length >
+                                    2 && (
+                                    <small>
+                                      +
+                                      {store.vehicles.filter((v) => v.customerId === c.id).length -
+                                        2}{' '}
+                                      more
+                                    </small>
+                                  )}
+                                </div>
                               </td>
                               <td>
                                 {bs.length
@@ -1164,7 +1273,16 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     (c) =>
                       inRegion(c) &&
                       (customerType === 'All customers' || c.type === customerType) &&
-                      matches(tableSearch, c.name, c.contact),
+                      matches(
+                        tableSearch,
+                        c.name,
+                        c.contact,
+                        c.email,
+                        c.phone ?? '',
+                        ...store.vehicles
+                          .filter((v) => v.customerId === c.id)
+                          .flatMap((v) => [v.model, v.plate]),
+                      ),
                   ) && <Empty />}
                 </div>
                 <div className="table-footer">
@@ -1172,7 +1290,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 </div>
               </section>
             )}
-            {page === 'Vehicles' && (
+            {page === 'Customers' && directoryView === 'Vehicles' && (
               <section className="card">
                 <div className="listing-toolbar">
                   <h2>
@@ -1209,6 +1327,17 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           (v) =>
                             inRegion(customer(v.customerId)) &&
                             matches(tableSearch, v.model, v.plate, customer(v.customerId).name),
+                        )
+                        .sort((a, b) =>
+                          sort === 'Name A–Z'
+                            ? a.model.localeCompare(b.model)
+                            : sort === 'Name Z–A'
+                              ? b.model.localeCompare(a.model)
+                              : sort === 'Most recent visit'
+                                ? lastVisit(b.customerId, b.id).localeCompare(
+                                    lastVisit(a.customerId, a.id),
+                                  )
+                                : compareCustomers(customer(a.customerId), customer(b.customerId)),
                         )
                         .map((v) => {
                           const last = store.bookings
@@ -1332,6 +1461,37 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           bookings={store.bookings.filter((b) => owner(b).id === c.id)}
                           renderBookings={(bs) => bookingRows(bs, true)}
                         >
+                          <div className="contact-summary">
+                            <div>
+                              <span>Contact</span>
+                              <strong>{c.contact || c.name}</strong>
+                              <div className="contact-actions">
+                                {c.phone ? (
+                                  <a href={`tel:${c.phone.replace(/[^+0-9]/g, '')}`}>{c.phone}</a>
+                                ) : (
+                                  <span>Phone not added</span>
+                                )}
+                                {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
+                              </div>
+                            </div>
+                            <div>
+                              <span>Service addresses</span>
+                              {(c.addresses?.length ? c.addresses : [c.address])
+                                .filter(Boolean)
+                                .map((address, i) => (
+                                  <p key={i}>
+                                    <MapPin size={14} />
+                                    {address}
+                                  </p>
+                                ))}
+                            </div>
+                            {(c.contacts?.length ?? 0) > 1 && (
+                              <div>
+                                <span>Other contacts</span>
+                                <p>{c.contacts!.slice(1).join(' · ')}</p>
+                              </div>
+                            )}
+                          </div>
                           <CustomerDetails
                             customer={c}
                             defaultDays={store.settings.reminderDays}
@@ -1355,17 +1515,10 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                               setToast('Customer updated')
                             }}
                           />
-                          <div className="profile-info">
-                            <div>
-                              <span>Contact</span>
-                              <strong>{c.contact}</strong>
-                              <p>{c.email}</p>
-                            </div>
-                            <div>
-                              <span>Service address</span>
-                              <p>{c.address}</p>
-                            </div>
-                          </div>
+                          <NotesEditor
+                            notes={c.notes}
+                            onSave={(text) => saveNotes('customer', c.id, text)}
+                          />
                           <div className="profile-section">
                             <h3>
                               Vehicles{' '}
@@ -1693,7 +1846,12 @@ function Profile({
       </div>
       <div className="profile-tabs tabs">
         {['Overview', 'History', 'Bookings'].map((t) => (
-          <button key={t} className={tab === t ? 'selected' : ''} onClick={() => setTab(t)}>
+          <button
+            key={t}
+            aria-pressed={tab === t}
+            className={tab === t ? 'selected' : ''}
+            onClick={() => setTab(t)}
+          >
             {t}
             {t === 'History' && <span>{activities.length}</span>}
           </button>
@@ -1703,7 +1861,9 @@ function Profile({
         {tab === 'Overview' ? (
           <>
             {children}
-            <NotesEditor notes={notes} onSave={saveNotes} />
+            {!customer || title !== customer.name ? (
+              <NotesEditor notes={notes} onSave={saveNotes} />
+            ) : null}
             <div className="profile-summary">
               <div>
                 <strong>{bookings.length}</strong>
@@ -2098,9 +2258,18 @@ function NewBooking({
     [notes, setNotes] = useState(''),
     [error, setError] = useState('')
   const c = store.customers.find((c) => c.id === customerId)!,
-    s = services.find((s) => s.name === service)!
+    size = store.vehicles.find((v) => v.id === vehicleId)?.size ?? '',
+    availableServices = services.filter((s) => serviceFits(s, c.region, size)),
+    s = availableServices.find((s) => s.name === service) ?? availableServices[0]
+  useEffect(() => {
+    if (s && service !== s.name) setService(s.name)
+  }, [s?.name, service])
   function submit(e: FormEvent) {
     e.preventDefault()
+    if (!s) {
+      setError('No matching package. Check the vehicle size and service region.')
+      return
+    }
     if (c.region === 'Unassigned' || !store.settings.regions[c.region].enabled) {
       setError('This region is disabled. Enable it in Settings.')
       return
@@ -2131,7 +2300,7 @@ function NewBooking({
       date,
       time,
       duration: s.duration,
-      service,
+      service: s.name,
       price: tariff(s, store.vehicles.find((v) => v.id === vehicleId)!.size),
       arrivalWindow: 30,
       staffIds: assigned,
@@ -2193,7 +2362,7 @@ function NewBooking({
         <label className="field full">
           Service
           <Select aria-label="Service" value={service} onChange={(e) => setService(e.target.value)}>
-            {services.map((s) => (
+            {availableServices.map((s) => (
               <option key={s.name}>{s.name}</option>
             ))}
           </Select>
@@ -2274,14 +2443,16 @@ function NewBooking({
       <div className="form-actions">
         <span>
           <Clock3 size={14} />
-          {s.duration} min <span>·</span>{' '}
+          {s?.duration ?? '—'} min <span>·</span>{' '}
           <strong>
-            {live && !store.vehicles.find((v) => v.id === vehicleId)?.size
-              ? 'Set vehicle size first'
-              : money(tariff(s, store.vehicles.find((v) => v.id === vehicleId)!.size))}
+            {!s
+              ? 'No matching package'
+              : live && !store.vehicles.find((v) => v.id === vehicleId)?.size
+                ? 'Set vehicle size first'
+                : money(tariff(s, store.vehicles.find((v) => v.id === vehicleId)!.size))}
           </strong>
         </span>
-        <button className="btn primary" type="submit">
+        <button className="btn primary" type="submit" disabled={!s}>
           <Plus size={15} />
           Create booking
         </button>
@@ -2411,7 +2582,7 @@ function FormSelect({
     <Select name={name} aria-label={label} value={value} onChange={(e) => setValue(e.target.value)}>
       {options.map((x) => (
         <option key={x} value={x}>
-          {x || 'Not set'}
+          {sizeLabels[x] ?? (x || 'Not set')}
         </option>
       ))}
     </Select>

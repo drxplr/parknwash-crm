@@ -1,3 +1,4 @@
+import { websitePackages, websiteServices, sizeLabels } from './websiteCatalog'
 import { Info } from 'lucide-react'
 import { Select } from './Select'
 import { useState } from 'react'
@@ -225,6 +226,8 @@ export function CustomerDetails({
   defaultDays: number
   onSave: (c: Customer) => void
 }) {
+  const [name, setName] = useState(c.name),
+    [email, setEmail] = useState(c.email)
   const [addresses, setAddresses] = useState((c.addresses ?? [c.address]).join('\n')),
     [contacts, setContacts] = useState((c.contacts ?? [c.contact]).join('\n')),
     [days, setDays] = useState(c.reminderDays ?? defaultDays),
@@ -236,7 +239,7 @@ export function CustomerDetails({
   return (
     <>
       <details className="customer-details">
-        <summary>Contacts, addresses & reminders</summary>
+        <summary>Edit customer details & reminders</summary>
         <form
           className="settings-section"
           onChange={() => setSaved(false)}
@@ -253,6 +256,8 @@ export function CustomerDetails({
             if (!people.length) return
             onSave({
               ...c,
+              name: name.trim(),
+              email: email.trim(),
               addresses: list,
               address: list[0] ?? '',
               contacts: people,
@@ -266,6 +271,16 @@ export function CustomerDetails({
             setSaved(true)
           }}
         >
+          <div className="form-grid">
+            <label className="field">
+              Customer name
+              <input required value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label className="field">
+              Email
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+          </div>
           <div className="form-grid">
             <label className="field">
               Customer type
@@ -341,6 +356,13 @@ export function Settings({
 }) {
   const [draft, setDraft] = useState(structuredClone(store.settings)),
     [saved, setSaved] = useState(false)
+  const websiteLoaded = websitePackages.every((pkg) =>
+    ['Ticino', 'Geneva'].every((region) =>
+      ['S', 'M', 'L+'].every((size) =>
+        draft.services.some((s) => s.name === `${pkg.name} · ${region} · ${size}`),
+      ),
+    ),
+  )
   return (
     <form
       className="operations"
@@ -361,6 +383,51 @@ export function Settings({
           <p>CHF by vehicle size. Changes apply to new bookings; existing quotes stay fixed.</p>
         </details>
       </div>
+      <div className="website-catalog">
+        <div>
+          <h3>Park n Wash care packages</h3>
+          <a href="https://parknwash.ch/en/car-care/" target="_blank" rel="noreferrer">
+            Website prices · verified 8 Nov 2026 ↗
+          </a>
+        </div>
+        <div className="catalog-packages">
+          {websitePackages.map((pkg) => (
+            <div key={pkg.name}>
+              <strong>{pkg.name}</strong>
+              <p>{pkg.includes}</p>
+              <small>
+                Ticino: {pkg.Ticino.join(' / ')} CHF · Geneva: {pkg.Geneva.join(' / ')} CHF
+              </small>
+            </div>
+          ))}
+        </div>
+        {websiteLoaded ? (
+          <p className="catalog-loaded">✓ Website packages are in your catalogue</p>
+        ) : (
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              const catalog = websiteServices()
+              setSaved(false)
+              setDraft({
+                ...draft,
+                services: [
+                  ...draft.services,
+                  ...catalog.filter(
+                    (s) => !draft.services.some((existing) => existing.name === s.name),
+                  ),
+                ],
+              })
+            }}
+          >
+            Add missing website packages
+          </button>
+        )}
+        <p className="operation-caption">
+          S / M / L+ · Exact region, price and duration for each variant. Save settings to apply.
+        </p>
+      </div>
       <div className="table-scroll">
         <table>
           <thead>
@@ -368,7 +435,7 @@ export function Settings({
               <th>Service</th>
               <th>Minutes</th>
               {['Compact', 'Sedan', 'Estate', 'SUV'].map((size) => (
-                <th key={size}>{size} · CHF</th>
+                <th key={size}>{sizeLabels[size]} · CHF</th>
               ))}
             </tr>
           </thead>
@@ -397,7 +464,7 @@ export function Settings({
                     type="number"
                     min="15"
                     max="480"
-                    step="15"
+                    step="1"
                     value={s.duration}
                     onChange={(e) =>
                       setDraft({
@@ -409,7 +476,7 @@ export function Settings({
                     }
                   />
                 </td>
-                {Object.entries(s.tariffs).map(([size, price]) => (
+                {['Compact', 'Sedan', 'Estate', 'SUV'].map((size) => (
                   <td key={size}>
                     <input
                       aria-label={`${s.name} ${size} price`}
@@ -417,7 +484,8 @@ export function Settings({
                       type="number"
                       min="0"
                       max="10000"
-                      value={price}
+                      value={s.tariffs[size] ?? ''}
+                      disabled={s.tariffs[size] == null}
                       onChange={(e) =>
                         setDraft({
                           ...draft,

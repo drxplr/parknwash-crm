@@ -4,8 +4,10 @@ import App from './App'
 const CloudApp = lazy(() => import('./CloudApp'))
 import './styles.css'
 import './refinements.css'
+import './ux.css'
 const cloudMode =
   (import.meta.env.VITE_CRM_MODE ?? (import.meta.env.PROD ? 'cloud' : 'demo')) === 'cloud'
+const demo = new URLSearchParams(location.search).get('demo') === '1'
 const embedded = import.meta.env.PROD && cloudMode && window.top !== window.self
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -27,7 +29,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           </main>
         }
       >
-        {cloudMode ? <CloudApp /> : <App />}
+        {cloudMode && !demo ? <CloudApp /> : <App />}
       </Suspense>
     )}
   </React.StrictMode>,
