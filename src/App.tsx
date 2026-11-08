@@ -706,53 +706,55 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 </button>
               )}
             </div>
-            <div className="context-bar">
-              <div className="context-date">
-                <CalendarDays size={15} />
-                {page === 'Overview'
-                  ? dayLabel(today, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : page === 'Bookings'
-                    ? 'Zurich time'
-                    : 'Workspace'}
-                {!cloud && <span className="demo-label">Demo</span>}
-              </div>
-              <div className="filters">
-                <label className="select-wrap">
-                  <MapPin size={14} />
-                  <Select
-                    aria-label="Filter region"
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
-                  >
-                    <option>All regions</option>
-                    <option>Geneva</option>
-                    <option>Ticino</option>
-                  </Select>
-                </label>
-                {(page === 'Overview' || page === 'Bookings') && (
+            {page !== 'Settings' && (
+              <div className="context-bar">
+                <div className="context-date">
+                  <CalendarDays size={15} />
+                  {page === 'Overview'
+                    ? dayLabel(today, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    : page === 'Bookings'
+                      ? 'Zurich time'
+                      : 'Workspace'}
+                  {!cloud && <span className="demo-label">Demo</span>}
+                </div>
+                <div className="filters">
                   <label className="select-wrap">
-                    <Users size={14} />
+                    <MapPin size={14} />
                     <Select
-                      aria-label="Filter staff"
-                      value={staffFilter}
-                      onChange={(e) => setStaffFilter(e.target.value)}
+                      aria-label="Filter region"
+                      value={region}
+                      onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
                     >
-                      <option>All staff</option>
-                      {staff.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
+                      <option>All regions</option>
+                      <option>Geneva</option>
+                      <option>Ticino</option>
                     </Select>
                   </label>
-                )}
+                  {(page === 'Overview' || page === 'Bookings') && (
+                    <label className="select-wrap">
+                      <Users size={14} />
+                      <Select
+                        aria-label="Filter staff"
+                        value={staffFilter}
+                        onChange={(e) => setStaffFilter(e.target.value)}
+                      >
+                        <option>All staff</option>
+                        {staff.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
             {storageError && (
               <div role="alert" className="notice">
                 Browser storage is unavailable. Changes will last only for this session.
@@ -1351,9 +1353,22 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                     <CarFront size={23} />
                                   </span>
                                   <div>
-                                    <strong>{v.model}</strong>
+                                    <strong>
+                                      {v.model}{' '}
+                                      <small
+                                        className="vehicle-size"
+                                        title={
+                                          v.notes.startsWith('[Size review]')
+                                            ? 'Size needs review'
+                                            : 'Vehicle size'
+                                        }
+                                      >
+                                        {sizeLabels[v.size] ?? '—'}
+                                        {v.notes.startsWith('[Size review]') ? ' ?' : ''}
+                                      </small>
+                                    </strong>
                                     <span className="sub">
-                                      {v.color} · {v.size}
+                                      {v.color} · {sizeLabels[v.size] ?? v.size}
                                     </span>
                                   </div>
                                 </div>
@@ -1536,7 +1551,20 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                 >
                                   <CarFront size={23} />
                                   <div>
-                                    <strong>{v.model}</strong>
+                                    <strong>
+                                      {v.model}{' '}
+                                      <small
+                                        className="vehicle-size"
+                                        title={
+                                          v.notes.startsWith('[Size review]')
+                                            ? 'Size needs review'
+                                            : 'Vehicle size'
+                                        }
+                                      >
+                                        {sizeLabels[v.size] ?? '—'}
+                                        {v.notes.startsWith('[Size review]') ? ' ?' : ''}
+                                      </small>
+                                    </strong>
                                     <span>
                                       {[v.plate, v.color].filter(Boolean).join(' · ') ||
                                         'Vehicle details needed'}
@@ -1556,8 +1584,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <Profile
                           title={v.model}
                           subtitle={
-                            [v.plate, v.color, v.size].filter(Boolean).join(' · ') ||
-                            'Vehicle details needed'
+                            [v.plate, v.color, sizeLabels[v.size] ?? v.size]
+                              .filter(Boolean)
+                              .join(' · ') || 'Vehicle details needed'
                           }
                           customer={c}
                           notes={v.notes}
@@ -1580,6 +1609,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                         ...x,
                                         size: String(d.get('size') ?? ''),
                                         plate: String(d.get('plate') ?? ''),
+                                        notes: String(d.get('size') ?? '')
+                                          ? x.notes.replace(/^\[Size review\][^\n]*(?:\n)?/, '')
+                                          : x.notes,
                                       }
                                     : x,
                                 ),
@@ -1593,14 +1625,18 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                 name="size"
                                 label="Vehicle size"
                                 initial={v.size}
-                                options={['', 'Compact', 'Sedan', 'Estate', 'SUV']}
+                                options={['', 'Compact', 'Sedan', 'SUV']}
                               />
                             </label>
                             <label className="field">
                               Registration
                               <input name="plate" defaultValue={v.plate} />
                             </label>
-                            <button className="btn small-btn">Save vehicle details</button>
+                            <button className="btn small-btn">
+                              {v.notes.startsWith('[Size review]')
+                                ? 'Confirm vehicle size'
+                                : 'Save vehicle details'}
+                            </button>
                           </form>
                           <button className="owner-card" onClick={() => openCustomer(c.id)}>
                             <Avatar name={c.name} customer={c} />
@@ -1666,7 +1702,20 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                       <CarFront size={20} />
                     </span>
                     <div>
-                      <strong>{v.model}</strong>
+                      <strong>
+                        {v.model}{' '}
+                        <small
+                          className="vehicle-size"
+                          title={
+                            v.notes.startsWith('[Size review]')
+                              ? 'Size needs review'
+                              : 'Vehicle size'
+                          }
+                        >
+                          {sizeLabels[v.size] ?? '—'}
+                          {v.notes.startsWith('[Size review]') ? ' ?' : ''}
+                        </small>
+                      </strong>
                       <span>
                         {v.plate} · {customer(v.customerId).name}
                       </span>
@@ -2006,7 +2055,7 @@ function BookingDetail({
           <Sparkles size={25} />
         </div>
         <Badge status={b.status} />
-        <h2>{b.service}</h2>
+        <h2>{b.service.replace(' · L+', ' · XL')}</h2>
         <p>
           {v.model} · {b.id}
         </p>
@@ -2140,7 +2189,16 @@ function BookingDetail({
         <button className="profile-vehicle" onClick={openVehicle}>
           <CarFront size={23} />
           <div>
-            <strong>{v.model}</strong>
+            <strong>
+              {v.model}{' '}
+              <small
+                className="vehicle-size"
+                title={v.notes.startsWith('[Size review]') ? 'Size needs review' : 'Vehicle size'}
+              >
+                {sizeLabels[v.size] ?? '—'}
+                {v.notes.startsWith('[Size review]') ? ' ?' : ''}
+              </small>
+            </strong>
             <span>
               {[v.plate, v.color].filter(Boolean).join(' · ') || 'Vehicle details needed'}
             </span>
@@ -2282,6 +2340,10 @@ function NewBooking({
       setError('Set the vehicle size and service tariff before booking.')
       return
     }
+    if (live && store.vehicles.find((v) => v.id === vehicleId)?.notes.startsWith('[Size review]')) {
+      setError('Confirm the vehicle size in its profile before booking.')
+      return
+    }
     const mins = Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
     if (!assigned.length) {
       setError('Assign at least one team member.')
@@ -2363,7 +2425,9 @@ function NewBooking({
           Service
           <Select aria-label="Service" value={service} onChange={(e) => setService(e.target.value)}>
             {availableServices.map((s) => (
-              <option key={s.name}>{s.name}</option>
+              <option key={s.name} value={s.name}>
+                {size ? s.name.split(' · ')[0] : s.name.replace(' · L+', ' · XL')}
+              </option>
             ))}
           </Select>
         </label>
@@ -2551,7 +2615,7 @@ function CreateCustomer({ onCreate }: { onCreate: (c: Customer, v: Vehicle) => v
             name="size"
             label="Vehicle size"
             initial=""
-            options={['', 'Compact', 'Sedan', 'Estate', 'SUV']}
+            options={['', 'Compact', 'Sedan', 'SUV']}
           />
         </label>
         <label className="field full">
@@ -2577,7 +2641,9 @@ function FormSelect({
   initial: string
   options: string[]
 }) {
-  const [value, setValue] = useState(initial)
+  const [value, setValue] = useState(
+    initial === 'Estate' && options.includes('Sedan') ? 'Sedan' : initial,
+  )
   return (
     <Select name={name} aria-label={label} value={value} onChange={(e) => setValue(e.target.value)}>
       {options.map((x) => (

@@ -593,7 +593,7 @@ for (const b of seed.bookings) {
     })
   }
 }
-export const STORAGE_KEY = 'parknwash-crm-demo-v2'
+export const STORAGE_KEY = 'parknwash-crm-demo-v3'
 export function loadStore(): Store {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -621,6 +621,9 @@ export function loadStore(): Store {
 export function createDemoStore(): Store {
   const store = structuredClone(seed)
   store.settings.services = websiteServices()
+  store.vehicles = store.vehicles.map((v) =>
+    /EQB|XC60|ID\.4/.test(v.model) ? { ...v, size: 'Sedan' } : v,
+  )
   store.bookings = store.bookings.filter((b) => b.date < DEMO_DATE)
   const starts = ['09:00', '10:30', '13:00', '15:30']
   for (let day = 0; day < 6; day++) {

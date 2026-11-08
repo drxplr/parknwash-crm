@@ -7,9 +7,9 @@ React + TypeScript + Vite + Tailwind frontend with Supabase Auth and shared, wor
 - Team workspace: https://drxplr.github.io/parknwash-crm/
 - Fictional demo: https://drxplr.github.io/parknwash-crm/?demo=1
 
-The explicit demo route mounts only the local fixture app and does not initialize the Supabase client. It uses a separate demo storage key; no cloud snapshot is copied into the demo. Return to the team workspace using the sidebar link. The default booking view is a weekly day-by-day planner; opening a day shows the hourly staff schedule. Customers and vehicles share one directory with independent views, search and sorting.
+The explicit demo route mounts only the local fixture app and does not initialize the Supabase client. It uses a separate demo storage key; no cloud snapshot is copied into the demo. Return to the team workspace using the sidebar link. The default booking view is a weekly time grid; opening a day shows the hourly staff schedule. Customers and vehicles share one directory with independent views, search and sorting.
 
-Website package prices and durations were verified on 8 November 2026. Region/size variants preserve exact quotes without changing the backend schema. Existing booking quotes stay fixed. Legacy vehicle-size labels map to S (Compact), M (Sedan/Estate), L+ (large SUV); unknown sizes must be confirmed before a real booking.
+Website package prices and durations were verified on 8 November 2026. Region/size variants preserve exact quotes without changing the backend schema. Existing booking quotes stay fixed. Legacy vehicle-size labels map to S (Compact), M (Sedan/Estate), XL (large SUV/performance); unknown sizes must be confirmed before a real booking.
 
 ## Run
 
@@ -41,3 +41,5 @@ The Supabase schema/RPC contract must already exist before using this frontend. 
 Real customer imports require reviewed mapping/counts and an authenticated round-trip test first. The authorized customer import is stored only in Supabase; the original Numbers file and local import payload are excluded from this repository. Missing source classifications and regions stay explicitly unspecified and can be corrected in customer details. Payment status is an internal record, not payment-provider reconciliation. Manually marked messages are operator assertions, not WhatsApp delivery receipts. The frontend has no built-in invitation sender, password-reset flow without SMTP, or team-role management UI yet.
 
 Branding uses the owner-supplied SVG in `public/brand-mark.svg` and `public/favicon.svg`. The publication workflow builds without running the test suite.
+
+Package settings show three package rows and three S/M/XL columns for the selected region, without duplicating the underlying regional variants. UI size labels use compatible internal keys. Provisional vehicle sizes have a visible review marker and cannot be used for a final booking quote until confirmed in the vehicle profile.

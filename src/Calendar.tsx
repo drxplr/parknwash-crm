@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Clock3 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
 import { layoutBookings, minutes } from './calendarModel'
 import { customerColorStyle } from './customerColors'
 import type { Store } from './model'
 export type BookingStart = { date: string; time: string; staffId?: string }
-const hourHeight = 72
+const hourHeight = 60
 
 export function ScheduleCalendar({
   store,
@@ -46,89 +46,24 @@ export function ScheduleCalendar({
   useEffect(() => {
     if (scroll.current) {
       const earliest = bookings.length ? Math.min(...bookings.map((b) => minutes(b.time))) : 540
-      scroll.current.scrollTop = Math.max(0, ((earliest - 480) * hourHeight) / 60)
+      scroll.current.scrollTop = Math.max(0, ((earliest - 510) * hourHeight) / 60)
     }
   }, [start, date, range])
-  if (range === 'Week')
-    return (
-      <div className="week-planner" aria-label="Weekly booking calendar">
-        {columns.map((col) => {
-          const items = bookings
-            .filter((b) => b.date === col.date)
-            .sort((a, b) => a.time.localeCompare(b.time))
-          return (
-            <section
-              className={`planner-day ${col.date === today ? 'is-today' : ''}`}
-              key={col.key}
-            >
-              <button
-                className="planner-heading"
-                onClick={() => onDay(col.date)}
-                aria-label={`Open ${dayLabel(col.date)} staff schedule`}
-              >
-                <span>{col.name}</span>
-                <strong>{Number(col.date.slice(-2))}</strong>
-                <small>{items.length} bookings</small>
-              </button>
-              <div className="planner-events">
-                {items.map((b) => {
-                  const v = store.vehicles.find((v) => v.id === b.vehicleId)!
-                  const c = store.customers.find((c) => c.id === v.customerId)!
-                  const end = minutes(b.time) + b.duration
-                  const endTime = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
-                  return (
-                    <button
-                      key={b.id}
-                      className={`planner-event ${b.status === 'Cancelled' ? 'cancelled' : ''}`}
-                      style={customerColorStyle(c)}
-                      onClick={() => onOpen(b.id)}
-                      title={`${c.name} · ${v.model} · ${b.service} · ${b.status}`}
-                    >
-                      <span className="planner-time">
-                        {b.time}
-                        <small>– {endTime}</small>
-                      </span>
-                      <strong>{c.name}</strong>
-                      <span className="planner-car">{v.model}</span>
-                      <span className="planner-package">{b.service.split(' · ')[0]}</span>
-                      <span
-                        className={`planner-status ${b.status.toLowerCase().replaceAll(' ', '-')}`}
-                      >
-                        {b.status}
-                        <span className="planner-staff">
-                          {b.staffIds
-                            .map((id) => team.find((s) => s.id === id)?.initials)
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                    </button>
-                  )
-                })}
-                {!items.length && <p className="planner-empty">No bookings</p>}
-              </div>
-              {canCreate && (
-                <button
-                  className="planner-add"
-                  onClick={() => onCreate({ date: col.date, time: '09:00' })}
-                  aria-label={`Add booking on ${dayLabel(col.date)}`}
-                >
-                  <Plus size={14} /> Book
-                </button>
-              )}
-            </section>
-          )
-        })}
-      </div>
-    )
   if (!columns.length) return <p className="operation-caption">No staff match these filters.</p>
   return (
     <>
-      <div className="schedule-scroll" ref={scroll} aria-label="Daily staff calendar">
+      <div
+        className="schedule-scroll amie-calendar"
+        ref={scroll}
+        aria-label={range === 'Week' ? 'Weekly time calendar' : 'Daily staff calendar'}
+      >
         <div
-          className="schedule-grid day-mode"
+          className={`schedule-grid ${range === 'Week' ? 'week-mode' : 'day-mode'}`}
           style={{
-            gridTemplateColumns: `52px repeat(${columns.length}, minmax(190px,1fr))`,
+            gridTemplateColumns:
+              range === 'Week'
+                ? '48px repeat(7,minmax(124px,1fr))'
+                : `48px repeat(${columns.length},minmax(180px,1fr))`,
           }}
         >
           <div className="schedule-heading schedule-zone">Zurich</div>
@@ -139,23 +74,35 @@ export function ScheduleCalendar({
             >
               <button
                 className="schedule-column-title"
-                onClick={() => onCreate({ date: col.date, time: '09:00', staffId: col.staffId })}
-                disabled={!canCreate}
-                aria-label={`Book with ${col.name}`}
+                onClick={() =>
+                  range === 'Week'
+                    ? onDay(col.date)
+                    : onCreate({ date: col.date, time: '09:00', staffId: col.staffId })
+                }
+                disabled={range === 'Day' && !canCreate}
+                aria-label={
+                  range === 'Week'
+                    ? `Open ${dayLabel(col.date)} staff schedule`
+                    : `Book with ${col.name}`
+                }
               >
-                <span className="schedule-staff-avatar">
-                  {col.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join('')}
-                </span>
+                {range === 'Day' && (
+                  <span className="schedule-staff-avatar">
+                    {col.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')}
+                  </span>
+                )}
                 <strong>{col.name}</strong>
-                <span>{col.subtitle}</span>
+                <span className={range === 'Week' ? 'calendar-day-number' : ''}>
+                  {range === 'Week' ? Number(col.date.slice(-2)) : col.subtitle}
+                </span>
               </button>
             </div>
           ))}
-          <div className="schedule-ruler">
+          <div className="schedule-ruler" style={{ height: 13 * hourHeight }}>
             {Array.from({ length: 14 }, (_, i) => (
               <span key={i} style={{ top: i * hourHeight }}>
                 {String(i + 7).padStart(2, '0')}:00
@@ -170,6 +117,7 @@ export function ScheduleCalendar({
               <div
                 key={col.key}
                 className={`schedule-lane ${col.date === today ? 'is-today' : ''}`}
+                style={{ height: 13 * hourHeight }}
               >
                 {canCreate && (
                   <FreeTimes
@@ -203,13 +151,21 @@ export function ScheduleCalendar({
                       }}
                     >
                       <span className="schedule-event-time">
-                        <Clock3 size={10} />
-                        {b.time} · {b.duration} min
-                        {b.duration <= 60 && <small>{b.status}</small>}
+                        <span
+                          className={`event-state ${b.status.toLowerCase().replaceAll(' ', '-')}`}
+                        />
+                        {b.time}
+                        {lanes === 1 && <small>{b.duration}m</small>}
                       </span>
-                      <strong>{c.name}</strong>
-                      <span>{v.model}</span>
-                      <small className="schedule-status">{b.status}</small>
+                      <strong>
+                        {range === 'Week' && lanes > 1 && c.type !== 'Business'
+                          ? c.name
+                              .split(' ')
+                              .map((n, i, a) => (i === a.length - 1 ? n : n[0] + '.'))
+                              .join(' ')
+                          : c.name}
+                      </strong>
+                      <span className="event-vehicle">{v.model}</span>
                     </button>
                   )
                 })}

@@ -1,4 +1,4 @@
-import { websitePackages, websiteServices, sizeLabels } from './websiteCatalog'
+import { websitePackages, websiteServices } from './websiteCatalog'
 import { Info } from 'lucide-react'
 import { Select } from './Select'
 import { useState } from 'react'
@@ -356,13 +356,17 @@ export function Settings({
 }) {
   const [draft, setDraft] = useState(structuredClone(store.settings)),
     [saved, setSaved] = useState(false)
-  const websiteLoaded = websitePackages.every((pkg) =>
-    ['Ticino', 'Geneva'].every((region) =>
-      ['S', 'M', 'L+'].every((size) =>
-        draft.services.some((s) => s.name === `${pkg.name} · ${region} · ${size}`),
-      ),
-    ),
-  )
+  const [priceRegion, setPriceRegion] = useState<'Ticino' | 'Geneva'>('Ticino')
+  const variants = ['S', 'M', 'L+'] as const
+  const keys = ['Compact', 'Sedan', 'SUV'] as const
+  const isWebsite = (name: string) => websitePackages.some((p) => name.startsWith(p.name + ' · '))
+  function updateVariant(index: number, patch: Partial<Store['settings']['services'][number]>) {
+    setSaved(false)
+    setDraft({
+      ...draft,
+      services: draft.services.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    })
+  }
   return (
     <form
       className="operations"
@@ -373,142 +377,199 @@ export function Settings({
         setSaved(true)
       }}
     >
-      <div className="settings-section">
-        <h2>Services & packages</h2>
-        <details className="inline-help">
-          <summary>
-            <Info size={14} aria-hidden="true" />
-            <span>About pricing</span>
-          </summary>
-          <p>CHF by vehicle size. Changes apply to new bookings; existing quotes stay fixed.</p>
-        </details>
-      </div>
-      <div className="website-catalog">
-        <div>
-          <h3>Park n Wash care packages</h3>
-          <a href="https://parknwash.ch/en/car-care/" target="_blank" rel="noreferrer">
-            Website prices · verified 8 Nov 2026 ↗
+      <div className="package-settings">
+        <div className="package-toolbar">
+          <h2>Packages</h2>
+          <div className="segmented">
+            {(['Ticino', 'Geneva'] as const).map((r) => (
+              <button
+                type="button"
+                key={r}
+                className={priceRegion === r ? 'selected' : ''}
+                aria-pressed={priceRegion === r}
+                onClick={() => setPriceRegion(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <a
+            href="https://parknwash.ch/en/car-care/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="View website prices"
+          >
+            ↗
           </a>
         </div>
-        <div className="catalog-packages">
-          {websitePackages.map((pkg) => (
-            <div key={pkg.name}>
-              <strong>{pkg.name}</strong>
-              <p>{pkg.includes}</p>
-              <small>
-                Ticino: {pkg.Ticino.join(' / ')} CHF · Geneva: {pkg.Geneva.join(' / ')} CHF
-              </small>
-            </div>
-          ))}
+        <div className="table-scroll">
+          <table className="package-table">
+            <thead>
+              <tr>
+                <th>Package</th>
+                <th>S</th>
+                <th>M</th>
+                <th>XL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {websitePackages.map((pkg) => (
+                <tr key={pkg.name}>
+                  <th scope="row">{pkg.name.replace(' Care', '')}</th>
+                  {variants.map((size, j) => {
+                    const index = draft.services.findIndex(
+                      (s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`,
+                    )
+                    const service = draft.services[index]
+                    return (
+                      <td key={size}>
+                        {service ? (
+                          <div className="package-cell">
+                            <label>
+                              <span>CHF</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="10000"
+                                required
+                                value={service.tariffs[keys[j]] ?? service.price}
+                                aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} CHF`}
+                                onChange={(e) => {
+                                  const price = Number(e.target.value)
+                                  updateVariant(index, {
+                                    price,
+                                    tariffs: Object.fromEntries(
+                                      Object.keys(service.tariffs).map((k) => [k, price]),
+                                    ),
+                                  })
+                                }}
+                              />
+                            </label>
+                            <label className="package-duration">
+                              <input
+                                type="number"
+                                min="15"
+                                max="480"
+                                required
+                                value={service.duration}
+                                aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} minutes`}
+                                onChange={(e) =>
+                                  updateVariant(index, { duration: Number(e.target.value) })
+                                }
+                              />
+                              <span>min</span>
+                            </label>
+                          </div>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {websiteLoaded ? (
-          <p className="catalog-loaded">✓ Website packages are in your catalogue</p>
-        ) : (
+        {!websitePackages.every((pkg) =>
+          variants.every((size) =>
+            draft.services.some((s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`),
+          ),
+        ) && (
           <button
-            className="btn"
             type="button"
+            className="btn small-btn"
             onClick={() => {
-              const catalog = websiteServices()
               setSaved(false)
               setDraft({
                 ...draft,
                 services: [
                   ...draft.services,
-                  ...catalog.filter(
-                    (s) => !draft.services.some((existing) => existing.name === s.name),
+                  ...websiteServices().filter(
+                    (s) => !draft.services.some((x) => x.name === s.name),
                   ),
                 ],
               })
             }}
           >
-            Add missing website packages
+            Load packages
           </button>
         )}
-        <p className="operation-caption">
-          S / M / L+ · Exact region, price and duration for each variant. Save settings to apply.
-        </p>
       </div>
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Service</th>
-              <th>Minutes</th>
-              {['Compact', 'Sedan', 'Estate', 'SUV'].map((size) => (
-                <th key={size}>{sizeLabels[size]} · CHF</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {draft.services.map((s, i) => (
-              <tr key={i}>
-                <td>
-                  <input
-                    aria-label={`Service ${i + 1} name`}
-                    required
-                    value={s.name}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        services: draft.services.map((x, j) =>
-                          i === j ? { ...x, name: e.target.value } : x,
-                        ),
-                      })
-                    }
-                  />
-                </td>
-                <td>
-                  <input
-                    aria-label={`${s.name} minutes`}
-                    required
-                    type="number"
-                    min="15"
-                    max="480"
-                    step="1"
-                    value={s.duration}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        services: draft.services.map((x, j) =>
-                          i === j ? { ...x, duration: Number(e.target.value) } : x,
-                        ),
-                      })
-                    }
-                  />
-                </td>
-                {['Compact', 'Sedan', 'Estate', 'SUV'].map((size) => (
-                  <td key={size}>
-                    <input
-                      aria-label={`${s.name} ${size} price`}
-                      required
-                      type="number"
-                      min="0"
-                      max="10000"
-                      value={s.tariffs[size] ?? ''}
-                      disabled={s.tariffs[size] == null}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          services: draft.services.map((x, j) =>
-                            i === j
-                              ? { ...x, tariffs: { ...x.tariffs, [size]: Number(e.target.value) } }
-                              : x,
-                          ),
-                        })
-                      }
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="settings-section">
+      {draft.services.some((s) => !isWebsite(s.name)) && (
+        <details className="custom-services" open>
+          <summary>Other services</summary>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Minutes</th>
+                  <th>S · CHF</th>
+                  <th>M · CHF</th>
+                  <th>XL · CHF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {draft.services
+                  .map((service, index) => ({ service, index }))
+                  .filter(({ service }) => !isWebsite(service.name))
+                  .map(({ service, index }) => (
+                    <tr key={index}>
+                      <td>
+                        <input
+                          required
+                          aria-label={`Custom service ${index + 1}`}
+                          value={service.name}
+                          onChange={(e) => updateVariant(index, { name: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          required
+                          min="15"
+                          max="480"
+                          aria-label={`${service.name} minutes`}
+                          value={service.duration}
+                          onChange={(e) =>
+                            updateVariant(index, { duration: Number(e.target.value) })
+                          }
+                        />
+                      </td>
+                      {keys.map((key) => (
+                        <td key={key}>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            aria-label={`${service.name} ${key} CHF`}
+                            value={service.tariffs[key] ?? service.price}
+                            onChange={(e) =>
+                              updateVariant(index, {
+                                tariffs: {
+                                  ...service.tariffs,
+                                  [key]: Number(e.target.value),
+                                  ...(key === 'Sedan' ? { Estate: Number(e.target.value) } : {}),
+                                },
+                              })
+                            }
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+      <div className="settings-add-service">
         <button
           type="button"
-          className="btn"
-          onClick={() =>
+          className="btn small-btn"
+          onClick={() => {
+            setSaved(false)
             setDraft({
               ...draft,
               services: [
@@ -522,10 +583,12 @@ export function Settings({
                 },
               ],
             })
-          }
+          }}
         >
           Add service
         </button>
+      </div>
+      <div className="settings-section">
         <h2>Regions & staff</h2>
         <details className="inline-help">
           <summary>

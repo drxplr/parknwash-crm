@@ -27,10 +27,10 @@ export const websitePackages = [
   },
 ] as const
 export const sizeLabels: Record<string, string> = {
-  Compact: 'S · compact',
-  Sedan: 'M · sedan / mid-size SUV',
-  Estate: 'M · estate',
-  SUV: 'L+ · large SUV / performance',
+  Compact: 'S',
+  Sedan: 'M',
+  Estate: 'M',
+  SUV: 'XL',
 }
 export function websiteServices(): Service[] {
   return (['Ticino', 'Geneva'] as const).flatMap((region) =>
