@@ -1,0 +1,3 @@
+# Only the locked esbuild package may run its installation script.
+allowBuilds:
+  esbuild: true
