@@ -46,7 +46,7 @@ export function ScheduleCalendar({
   useEffect(() => {
     if (scroll.current) {
       const earliest = bookings.length ? Math.min(...bookings.map((b) => minutes(b.time))) : 540
-      scroll.current.scrollTop = Math.max(0, ((earliest - 510) * hourHeight) / 60)
+      scroll.current.scrollTop = Math.max(0, ((earliest - 450) * hourHeight) / 60)
     }
   }, [start, date, range])
   if (!columns.length) return <p className="operation-caption">No staff match these filters.</p>
