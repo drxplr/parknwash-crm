@@ -30,11 +30,11 @@ Production builds default to cloud mode and show a configuration error if connec
 
 ## Source and publishing
 
-The public frontend repository is `https://github.com/drxplr/parknwash-crm`. Backend migrations and private import preparation stay in the original private project. The public repository contains frontend source and fictional test fixtures only.
+The public frontend repository is `https://github.com/drxplr/parknwash-crm`. The authoritative CRM source and backend are in the separate private repository https://github.com/drxplr/parknwash-crm-private. The marketing website is maintained independently at https://github.com/drxplr/parknwash. The public repository contains frontend source and fictional test fixtures only.
 
 GitHub Pages builds the frontend from `main` with GitHub Actions. Repository variables supply `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; these values are public frontend configuration. A service-role key, secret key, database password, client export, invitation list or customer spreadsheet must never be included.
 
-The Supabase schema/RPC contract must already exist before using this frontend. Its private setup notes and migrations are under `supabase/` in the original project. Do not copy that project's folder recursively into a public repository.
+The Supabase schema/RPC contract must already exist before using this frontend. Its private setup notes and migrations are under `supabase/` in the standalone CRM source repository. Do not copy that project's folder recursively into a public repository.
 
 ## Pilot limits
 
