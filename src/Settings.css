@@ -1,26 +1,26 @@
 .settings-workspace {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
   margin-top: 8px;
 }
 .settings-nav {
-  display: grid;
-  gap: 5px;
-  position: sticky;
-  top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  position: static;
 }
 .settings-nav button {
   display: flex;
   align-items: center;
   gap: 10px;
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 12px;
   color: #737373;
   font-size: 13px;
-  min-height: 44px;
+  min-height: 40px;
 }
 .settings-nav button:hover {
   background: #ededed;
@@ -32,7 +32,7 @@
   box-shadow: 0 2px 9px #17171705;
 }
 .settings-nav button small {
-  margin-left: auto;
+  margin-left: 4px;
   color: #737373;
   background: #f0f0f0;
   border-radius: 6px;
