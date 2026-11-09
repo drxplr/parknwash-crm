@@ -76,7 +76,6 @@ export function CustomerProfile({
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
-  const ready = c.region !== 'Unassigned'
   function book(vehicleId?: string) {
     if (!vehicles.length) {
       setAddingVehicle(true)
@@ -151,62 +150,46 @@ export function CustomerProfile({
             </button>
           )}
         </div>
-        {(extraContact || phone) && (
+        {(extraContact || phone || wa || c.email || !readOnly) && (
           <div className="client-contact-line">
             {extraContact && <span>{extraContact}</span>}
-            {phone && <a href={`tel:${phone.replace(/[^+0-9]/g, '')}`}>{phone}</a>}
+            {phone && (
+              <a className="client-phone" href={`tel:${phone.replace(/[^+0-9]/g, '')}`}>
+                <Phone size={13} />
+                {phone}
+              </a>
+            )}
+
+            {wa && (
+              <a
+                className="btn"
+                href={wa}
+                target="_blank"
+                rel="noreferrer"
+                title="Prepare a WhatsApp message"
+              >
+                <MessageSquare size={15} />
+                WhatsApp
+              </a>
+            )}
+            {c.email && (
+              <a
+                className="btn client-email"
+                href={`mailto:${encodeURIComponent(c.email)}`}
+                aria-label={`Email ${c.email}`}
+                title={c.email}
+              >
+                <Mail size={15} />
+                <span>Email</span>
+              </a>
+            )}
+            {!phone && !c.email && !readOnly && (
+              <button className="client-text-action" onClick={() => setEditing(true)}>
+                Add contact details
+              </button>
+            )}
           </div>
         )}
-        <div className="client-quick-actions">
-          {!readOnly && (
-            <button className="btn primary" onClick={() => book()}>
-              <CalendarDays size={15} />
-              {!vehicles.length
-                ? 'Add vehicle'
-                : c.region === 'Unassigned'
-                  ? 'Set region'
-                  : 'Book a wash'}
-            </button>
-          )}
-          {wa && (
-            <a
-              className="btn"
-              href={wa}
-              target="_blank"
-              rel="noreferrer"
-              title="Prepare a WhatsApp message"
-            >
-              <MessageSquare size={15} />
-              WhatsApp
-            </a>
-          )}
-          {phone && (
-            <a
-              className="btn"
-              href={`tel:${phone.replace(/[^+0-9]/g, '')}`}
-              aria-label={`Call ${phone}`}
-            >
-              <Phone size={14} />
-              Call
-            </a>
-          )}
-          {c.email && (
-            <a
-              className="btn client-email"
-              href={`mailto:${encodeURIComponent(c.email)}`}
-              aria-label={`Email ${c.email}`}
-              title={c.email}
-            >
-              <Mail size={15} />
-              <span>Email</span>
-            </a>
-          )}
-          {!phone && !c.email && !readOnly && (
-            <button className="client-text-action" onClick={() => setEditing(true)}>
-              Add contact details
-            </button>
-          )}
-        </div>
         <div className="client-tabs selection-tabs" role="group" aria-label="Customer profile view">
           {(['Overview', 'History', 'Bookings'] as const).map((t) => (
             <button
@@ -275,76 +258,12 @@ export function CustomerProfile({
                 </div>
                 {bookingRow(next, true)}
               </section>
-            ) : (
-              <p className="client-empty-inline">
-                <CalendarDays size={14} />
-                No upcoming booking
-              </p>
-            )}
+            ) : null}
             {outstanding > 0 && (
               <button className="client-payment-alert" onClick={() => changeTab('Bookings')}>
                 {money(outstanding)} unpaid · completed washes
                 <ChevronRight size={14} />
               </button>
-            )}
-            {(c.notes.trim() || editingNote) && (
-              <section className="client-note">
-                <div className="client-section-heading">
-                  <h3>
-                    <MessageSquare size={13} />
-                    Visit notes
-                  </h3>
-                  {!readOnly && !editingNote && (
-                    <button
-                      className="client-text-action"
-                      onClick={() => {
-                        setNoteDraft(c.notes)
-                        setEditingNote(true)
-                      }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-                {editingNote ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      onSaveNotes(noteDraft.trim())
-                      setEditingNote(false)
-                    }}
-                  >
-                    <textarea
-                      autoFocus
-                      aria-label="Customer visit notes"
-                      rows={3}
-                      value={noteDraft}
-                      onChange={(e) => setNoteDraft(e.target.value)}
-                    />
-                    <div className="client-form-actions">
-                      <button
-                        className="btn small-btn"
-                        type="button"
-                        onClick={() => setEditingNote(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button className="btn primary small-btn" disabled={noteDraft === c.notes}>
-                        Save note
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <p className={!longNote || fullNote ? '' : 'client-note-preview'}>{c.notes}</p>
-                    {longNote && (
-                      <button className="client-text-action" onClick={() => setFullNote(!fullNote)}>
-                        {fullNote ? 'Show less' : 'Read full note'}
-                      </button>
-                    )}
-                  </>
-                )}
-              </section>
             )}
             <section className="client-vehicles">
               <div className="client-section-heading">
@@ -352,9 +271,13 @@ export function CustomerProfile({
                   Vehicles <span>{vehicles.length}</span>
                 </h3>
                 {!readOnly && (
-                  <button className="client-text-action" onClick={() => setAddingVehicle(true)}>
-                    <Plus size={13} />
-                    Add vehicle
+                  <button className="btn primary client-book-main" onClick={() => book()}>
+                    <CalendarDays size={14} />
+                    {!vehicles.length
+                      ? 'Add vehicle'
+                      : c.region === 'Unassigned'
+                        ? 'Set region'
+                        : 'Book a wash'}
                   </button>
                 )}
               </div>
@@ -378,8 +301,7 @@ export function CustomerProfile({
                         </small>
                       </strong>
                       <span>
-                        {v.plate || 'Registration not added'}
-                        {v.color && <> · {v.color}</>}
+                        {[v.plate, v.color].filter(Boolean).join(' · ') || 'Add vehicle details'}
                       </span>
                       {v.notes.startsWith('[Size review]') && (
                         <small className="client-size-review">Confirm size before booking</small>
@@ -387,61 +309,119 @@ export function CustomerProfile({
                     </span>
                     <ChevronRight size={14} />
                   </button>
-                  {!readOnly && ready && (
-                    <button
-                      className="btn small-btn client-car-book"
-                      onClick={() =>
-                        v.notes.startsWith('[Size review]') || !v.size
-                          ? onOpenVehicle(v.id)
-                          : book(v.id)
-                      }
-                      aria-label={
-                        v.notes.startsWith('[Size review]') || !v.size
-                          ? `Confirm size for ${v.model}`
-                          : `Book ${v.model}`
-                      }
-                    >
-                      {v.notes.startsWith('[Size review]') || !v.size ? 'Check size' : 'Book'}
-                    </button>
-                  )}
                 </article>
               ))}
+              {!readOnly && vehicles.length > 0 && (
+                <button
+                  className="client-text-action client-add-car"
+                  onClick={() => setAddingVehicle(true)}
+                >
+                  <Plus size={13} />
+                  Add vehicle
+                </button>
+              )}
               {!vehicles.length && (
                 <p className="client-empty-inline">Add a vehicle to start booking.</p>
               )}
             </section>
-            <section className="client-addresses">
-              <div className="client-section-heading">
-                <h3>Service address{addresses.length > 1 ? 'es' : ''}</h3>
-                {!readOnly && (
-                  <button className="client-text-action" onClick={() => setEditing(true)}>
-                    {addresses.length ? 'Edit' : 'Add'}
-                  </button>
-                )}
-              </div>
-              {addresses.map((address, i) => (
-                <p key={address}>
-                  <MapPin size={15} />
-                  <span>
-                    {address}
-                    {addresses.length > 1 && i === 0 && <small>Primary</small>}
-                  </span>
-                </p>
-              ))}
-              {!addresses.length && <p className="client-empty-inline">Address not added</p>}
+            <section className="client-location-notes">
+              <section className="client-addresses">
+                <div className="client-section-heading">
+                  <h3>Service address{addresses.length > 1 ? 'es' : ''}</h3>
+                  {!readOnly && (
+                    <button className="client-text-action" onClick={() => setEditing(true)}>
+                      {addresses.length ? 'Edit' : 'Add'}
+                    </button>
+                  )}
+                </div>
+                {addresses.map((address, i) => (
+                  <p key={address}>
+                    <MapPin size={15} />
+                    <span>
+                      {address}
+                      {addresses.length > 1 && i === 0 && <small>Primary</small>}
+                    </span>
+                  </p>
+                ))}
+                {!addresses.length && <p className="client-empty-inline">Address not added</p>}
+              </section>
+              {(c.notes.trim() || editingNote) && (
+                <section className="client-note">
+                  <div className="client-section-heading">
+                    <h3>
+                      <MessageSquare size={13} />
+                      Visit notes
+                    </h3>
+                    {!readOnly && !editingNote && (
+                      <button
+                        className="client-text-action"
+                        onClick={() => {
+                          setNoteDraft(c.notes)
+                          setEditingNote(true)
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  {editingNote ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        onSaveNotes(noteDraft.trim())
+                        setEditingNote(false)
+                      }}
+                    >
+                      <textarea
+                        autoFocus
+                        aria-label="Customer visit notes"
+                        rows={3}
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                      />
+                      <div className="client-form-actions">
+                        <button
+                          className="btn small-btn"
+                          type="button"
+                          onClick={() => setEditingNote(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button className="btn primary small-btn" disabled={noteDraft === c.notes}>
+                          Save note
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <p className={!longNote || fullNote ? '' : 'client-note-preview'}>
+                        {c.notes}
+                      </p>
+                      {longNote && (
+                        <button
+                          className="client-text-action"
+                          onClick={() => setFullNote(!fullNote)}
+                        >
+                          {fullNote ? 'Show less' : 'Read full note'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
+              {!c.notes.trim() && !editingNote && !readOnly && (
+                <button
+                  className="client-add-note"
+                  onClick={() => {
+                    setNoteDraft('')
+                    setEditingNote(true)
+                  }}
+                >
+                  <Plus size={14} />
+                  Add visit note
+                </button>
+              )}
             </section>
-            {!c.notes.trim() && !editingNote && !readOnly && (
-              <button
-                className="client-add-note"
-                onClick={() => {
-                  setNoteDraft('')
-                  setEditingNote(true)
-                }}
-              >
-                <Plus size={14} />
-                Add visit note
-              </button>
-            )}
             {completed.length > 0 && (
               <div className="client-service-summary">
                 <span>

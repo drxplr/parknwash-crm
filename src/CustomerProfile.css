@@ -590,3 +590,156 @@
     transition: none;
   }
 }
+/* Customer identity, booking, and visit information are separate visual groups. */
+.client-profile .client-profile-top {
+  padding-top: 18px;
+}
+.client-profile .client-identity h2 {
+  font-size: 22px;
+}
+.client-profile .client-identity p {
+  margin-top: 5px;
+}
+.client-profile .client-identity .region-badge {
+  font-size: 10px;
+  padding: 3px 6px;
+}
+.client-profile .client-edit {
+  background: transparent;
+  color: #737373;
+}
+.client-profile .client-contact-line {
+  margin: 14px 0;
+  padding: 7px 10px;
+  background: #f5f5f5;
+  border-radius: 11px;
+  gap: 6px 10px;
+  align-items: center;
+}
+.client-profile .client-contact-line .btn {
+  background: transparent;
+  border: 0;
+  font-size: 11px;
+  min-height: 30px;
+  padding: 5px 7px;
+  gap: 5px;
+  color: #525252;
+}
+.client-profile .client-contact-line .btn:hover {
+  background: #e9e9e9;
+}
+.client-contact-line .client-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  padding: 5px 0;
+  font-size: 12px;
+  color: #171717;
+}
+.client-profile .client-profile-top .selection-tabs {
+  margin: 0 0 16px;
+}
+.client-profile .client-profile-body {
+  background: #f5f5f5;
+  padding: 14px;
+  gap: 12px;
+  min-height: calc(100dvh - 260px);
+}
+.client-profile-body
+  > :is(
+    .client-vehicles,
+    .client-location-notes,
+    .client-next,
+    .client-editor,
+    .client-add-vehicle,
+    .client-booking-list,
+    .client-secondary
+  ) {
+  background: #fff;
+  padding: 16px;
+  border-radius: 16px;
+}
+.client-profile .client-vehicles .client-section-heading {
+  margin-bottom: 12px;
+}
+.client-profile .client-book-main {
+  font-size: 12px;
+  padding: 8px 11px;
+  min-height: 34px;
+  gap: 6px;
+}
+.client-profile .client-vehicle-row {
+  background: #f6f6f6;
+  border-radius: 12px;
+}
+.client-profile .client-vehicle-open {
+  padding: 12px;
+}
+.client-profile .client-car-symbol {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+}
+.client-profile .client-add-car {
+  margin-top: 10px;
+}
+.client-location-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.client-location-notes .client-note {
+  border-top: 1px solid #eee;
+  padding: 14px 0 0;
+  border-radius: 0;
+  background: transparent;
+}
+.client-location-notes .client-note > p {
+  color: #525252;
+}
+.client-profile .client-add-note {
+  margin: 0;
+  padding: 6px 0;
+}
+.client-profile .client-secondary {
+  padding: 6px 16px;
+}
+.client-profile .client-service-summary {
+  padding: 4px 8px;
+}
+.client-profile .client-profile-body > .client-booking-list {
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .client-profile .client-profile-body {
+    padding: 10px;
+    gap: 10px;
+  }
+  .client-profile-body
+    > :is(
+      .client-vehicles,
+      .client-location-notes,
+      .client-next,
+      .client-editor,
+      .client-add-vehicle,
+      .client-booking-list
+    ) {
+    padding: 14px;
+  }
+  .client-profile .client-book-main {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+  .client-profile .client-contact-line {
+    padding: 6px 8px;
+    gap: 4px 6px;
+  }
+  .client-profile .client-identity h2 {
+    font-size: 20px;
+  }
+}
+.client-profile .client-contact-line {
+  width: fit-content;
+  max-width: 100%;
+}
