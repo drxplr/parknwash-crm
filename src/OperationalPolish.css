@@ -1,0 +1,183 @@
+.region-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.35;
+  background: #eee;
+  color: #525252;
+}
+.region-badge > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.region-geneva {
+  color: #0051ce;
+  background: #e7efff;
+}
+.region-ticino {
+  color: #9a3908;
+  background: #fff0e4;
+}
+.location-dot {
+  background: #0066ff;
+}
+.location-dot.purple {
+  background: #f07827;
+}
+.directory-controls {
+  margin-bottom: 12px;
+  gap: 10px;
+}
+.settings-workspace {
+  margin-top: 0;
+  gap: 12px;
+}
+.settings-pane {
+  padding: 20px;
+  min-height: 0;
+}
+.settings-pane-header {
+  margin-bottom: 16px;
+}
+.settings-pane-header h2 {
+  font-size: 17px;
+}
+.settings-pane-header p {
+  display: none;
+}
+.settings-content .package-toolbar {
+  margin-bottom: 8px;
+}
+.settings-region-list {
+  gap: 0;
+}
+.settings-region-card {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(160px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 14px 0;
+  border-radius: 0;
+  background: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+.settings-region-toggle {
+  gap: 10px;
+}
+.settings-region-toggle span {
+  margin-left: 10px;
+}
+.settings-region-card .field {
+  margin: 0;
+}
+.settings-region-card input:not([type='checkbox']) {
+  background: #f5f5f5;
+}
+.toast {
+  background: #171717;
+  color: #fff;
+  border: 1px solid #171717;
+  box-shadow: 0 8px 32px #0003;
+  font-weight: 500;
+}
+.toast > span {
+  background: #343434;
+  color: #8ce4ac;
+  border: 0;
+}
+.toast.toast-error {
+  background: #9e2424;
+  border-color: #9e2424;
+}
+.toast.toast-error > span {
+  background: #ffffff20;
+  color: #fff;
+}
+.client-contact-line {
+  margin-top: 6px;
+}
+.client-identity p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.client-quick-actions {
+  padding: 12px 0;
+}
+.booking-team-setup {
+  width: 100%;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.booking-team-setup > strong {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+}
+.booking-team-setup .field {
+  flex: 1;
+  min-width: 150px;
+}
+.booking-team-setup .btn {
+  min-height: 36px;
+  font-size: 12px;
+}
+.booking-team-setup p {
+  font-size: 12px;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .settings-pane {
+    padding: 16px;
+  }
+  .settings-region-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .settings-region-toggle span {
+    margin-left: auto;
+  }
+  .settings-nav {
+    gap: 4px;
+  }
+}
+
+.location-list .location-dot {
+  background: #0066ff;
+}
+.location-list .location-dot.purple {
+  background: #ed6b16;
+}
+
+.region-coverage {
+  min-width: 0;
+  font-size: 12px;
+  color: #737373;
+}
+.region-coverage summary {
+  margin: 0;
+  padding: 8px 0;
+  gap: 12px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.region-coverage summary::after {
+  width: 5px;
+  height: 5px;
+  flex-basis: 5px;
+}
+.region-coverage[open] .field {
+  margin-top: 8px;
+}

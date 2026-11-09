@@ -38,3 +38,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 import './Settings.css'
+import './OperationalPolish.css'

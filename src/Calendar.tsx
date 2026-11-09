@@ -48,7 +48,17 @@ export function ScheduleCalendar({
           name: dayLabel(addDays(start, i), { weekday: 'short' }),
           subtitle: dayLabel(addDays(start, i), { day: 'numeric', month: 'short' }),
         }))
-      : team.map((s) => ({ key: s.id, date, staffId: s.id, name: s.name, subtitle: s.region }))
+      : team.length
+        ? team.map((s) => ({ key: s.id, date, staffId: s.id, name: s.name, subtitle: s.region }))
+        : [
+            {
+              key: date,
+              date,
+              staffId: undefined,
+              name: 'Schedule',
+              subtitle: 'Assign team when booking',
+            },
+          ]
   useEffect(() => {
     if (scroll.current) {
       const earliest = bookings.length ? Math.min(...bookings.map((b) => minutes(b.time))) : 540

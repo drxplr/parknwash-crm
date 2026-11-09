@@ -672,22 +672,25 @@ export function Settings({
                     <strong>{r}</strong>
                     <span>{draft.regions[r].enabled ? 'Accepting bookings' : 'Paused'}</span>
                   </label>
-                  <label className="field">
-                    Coverage
-                    <input
-                      aria-label={`${r} coverage`}
-                      value={draft.regions[r].notes}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          regions: {
-                            ...draft.regions,
-                            [r]: { ...draft.regions[r], notes: e.target.value },
-                          },
-                        })
-                      }
-                    />
-                  </label>
+                  <details className="region-coverage">
+                    <summary>{draft.regions[r].notes || 'Add coverage note'}</summary>
+                    <label className="field">
+                      Coverage note
+                      <input
+                        aria-label={`${r} coverage`}
+                        value={draft.regions[r].notes}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            regions: {
+                              ...draft.regions,
+                              [r]: { ...draft.regions[r], notes: e.target.value },
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </details>
                 </div>
               ))}
               <p className="settings-footnote">

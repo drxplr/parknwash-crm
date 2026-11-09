@@ -1,3 +1,4 @@
+import { RegionBadge } from './RegionBadge'
 import { CustomerProfile } from './CustomerProfile'
 import { ActivityHistory } from './ActivityHistory'
 import { PageHeader } from './PageHeader'
@@ -481,8 +482,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <td>
                 {b.service.split(' · ')[0]}
                 <span className="sub">
-                  <MapPin size={11} />
-                  {owner(b).region}
+                  <RegionBadge region={owner(b).region} />
                 </span>
               </td>
               <td>
@@ -734,11 +734,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         className="btn primary"
                         disabled={cloud?.role === 'viewer'}
                         onClick={() => {
-                          if (!store.settings.services.length || !staff.length) {
-                            if (!cloud || cloud.role === 'admin') navigate('Settings')
-                            else setToast('Ask an administrator to add services and staff.')
-                            return
-                          }
                           if (
                             !store.vehicles.some((v) =>
                               store.customers.some((c) => c.id === v.customerId),
@@ -757,9 +752,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         }}
                       >
                         <Plus size={16} />
-                        {!store.settings.services.length || !staff.length
-                          ? 'Set up calendar'
-                          : 'New booking'}
+                        New booking
                       </button>
                     )}
                   </>
@@ -1010,25 +1003,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   </span>
                   {!cloud && <span className="demo-label">Fictional demo bookings</span>}
                 </div>
-                {cloud && (!staff.length || !store.settings.services.length) && (
-                  <div className="setup-notice">
-                    <div>
-                      <strong>Finish setting up your calendar</strong>
-                      <p>
-                        {!store.settings.services.length ? 'Add your care packages and ' : 'Add '}
-                        the real team to start scheduling.
-                      </p>
-                    </div>
-                    {cloud.role === 'admin' && (
-                      <button className="btn" onClick={() => navigate('Settings')}>
-                        Open settings <ArrowRight size={14} />
-                      </button>
-                    )}
-                    <a className="btn" href="?demo=1">
-                      Preview with demo bookings
-                    </a>
-                  </div>
-                )}
                 {(status !== 'All active' ||
                   region !== 'All regions' ||
                   staffFilter !== 'All staff') && (
@@ -1073,7 +1047,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     canCreate={
                       (!cloud || cloud.role !== 'viewer') &&
                       !!store.settings.services.length &&
-                      !!staff.length &&
                       !!store.vehicles.length
                     }
                     onOpen={(id) => setDetail({ kind: 'booking', id })}
@@ -1086,7 +1059,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         !cloud ||
                         (cloud.role !== 'viewer' &&
                           store.settings.services.length &&
-                          staff.length &&
                           store.vehicles.length)
                       ) {
                         setBookingStart(context)
@@ -1234,10 +1206,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                 </span>
                               </td>
                               <td>
-                                <span
-                                  className={`location-dot ${c.region === 'Ticino' ? 'purple' : ''}`}
-                                />
-                                {c.region}
+                                <RegionBadge region={c.region} />
                               </td>
                               <td>
                                 <div className="directory-cars">
@@ -1399,7 +1368,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                   <ArrowUpRight size={12} />
                                 </button>
                               </td>
-                              <td>{customer(v.customerId).region}</td>
+                              <td>
+                                <RegionBadge region={customer(v.customerId).region} />
+                              </td>
                               <td>{last ? dayLabel(last.date) : 'No visits yet'}</td>
                               <td>
                                 <button className="row-arrow" aria-label={`Open ${v.model}`}>
@@ -1481,13 +1452,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           store={store}
                           today={today}
                           readOnly={cloud?.role === 'viewer'}
-                          setupNeeded={!store.settings.services.length || !staff.length}
-                          onSetup={() => {
-                            if (!cloud || cloud.role === 'admin') {
-                              setDetail(null)
-                              navigate('Settings')
-                            } else setToast('Ask an administrator to add services and staff.')
-                          }}
                           onBook={(vehicleId) => {
                             setDetail(null)
                             setBookingStart({
@@ -1732,29 +1696,56 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
         )}
         {newBooking && (
           <Dialog wide title="New booking" onClose={() => setNewBooking(false)}>
-            <NewBooking
-              store={store}
-              initial={bookingStart}
-              today={today}
-              live={!!cloud}
-              onCreate={(b) => {
-                setStore((s) => ({
-                  ...s,
-                  bookings: [...s.bookings, b],
-                  activities: [
-                    record(b, 'Booking created', `${b.service} · ${dayLabel(b.date)} at ${b.time}`),
-                    ...s.activities,
-                  ],
-                }))
-                setNewBooking(false)
-                setDate(b.date)
-                setStatus('All active')
-                setRegion('All regions')
-                setStaffFilter('All staff')
-                setDetail({ kind: 'booking', id: b.id })
-                setToast('Booking created')
-              }}
-            />
+            {store.settings.services.length ? (
+              <NewBooking
+                store={store}
+                initial={bookingStart}
+                today={today}
+                live={!!cloud}
+                canAddStaff={!cloud || cloud.role === 'admin'}
+                onAddStaff={(member) =>
+                  setStore((s) => ({
+                    ...s,
+                    settings: { ...s.settings, staff: [...s.settings.staff, member] },
+                  }))
+                }
+                onCreate={(b) => {
+                  setStore((s) => ({
+                    ...s,
+                    bookings: [...s.bookings, b],
+                    activities: [
+                      record(
+                        b,
+                        'Booking created',
+                        `${b.service} · ${dayLabel(b.date)} at ${b.time}`,
+                      ),
+                      ...s.activities,
+                    ],
+                  }))
+                  setNewBooking(false)
+                  setDate(b.date)
+                  setStatus('All active')
+                  setRegion('All regions')
+                  setStaffFilter('All staff')
+                  setDetail({ kind: 'booking', id: b.id })
+                  setToast('Booking created')
+                }}
+              />
+            ) : (
+              <div className="booking-form">
+                <h2>Add a service first</h2>
+                <p>Care packages and tariffs are required to calculate a booking.</p>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setNewBooking(false)
+                    navigate('Settings')
+                  }}
+                >
+                  Open services & pricing
+                </button>
+              </div>
+            )}
           </Dialog>
         )}
         {resetOpen && (
@@ -1785,7 +1776,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
         )}
         {toast && (
           <div
-            className="toast"
+            className={`toast ${toast.startsWith('Cannot save') || toast.startsWith('Choose') ? 'toast-error' : ''}`}
             role={
               toast.startsWith('Cannot save') || toast.startsWith('Choose') ? 'alert' : 'status'
             }
@@ -2149,7 +2140,11 @@ function NewBooking({
   onCreate,
   today = DEMO_DATE,
   live = false,
+  canAddStaff,
+  onAddStaff,
 }: {
+  canAddStaff: boolean
+  onAddStaff: (member: Store['settings']['staff'][number]) => void
   store: Store
   today?: string
   live?: boolean
@@ -2203,7 +2198,8 @@ function NewBooking({
     [assigned, setAssigned] = useState<string[]>(initial?.staffId ? [initial.staffId] : []),
     [address, setAddress] = useState(initialCustomer.address),
     [notes, setNotes] = useState(''),
-    [error, setError] = useState('')
+    [error, setError] = useState(''),
+    [staffName, setStaffName] = useState('')
   const c = store.customers.find((c) => c.id === customerId)!,
     size = store.vehicles.find((v) => v.id === vehicleId)?.size ?? '',
     availableServices = services.filter((s) => serviceFits(s, c.region, size)),
@@ -2347,6 +2343,48 @@ function NewBooking({
         </label>
         <fieldset className="staff-picker full">
           <legend>Assign team · {c.region}</legend>
+          {!staff.some((member) => member.region === c.region) && (
+            <div className="booking-team-setup">
+              <strong>No team members in {c.region} yet</strong>
+              {canAddStaff && c.region !== 'Unassigned' ? (
+                <>
+                  <label className="field">
+                    Team member name
+                    <input
+                      value={staffName}
+                      onChange={(e) => setStaffName(e.target.value)}
+                      placeholder="Full name"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={!staffName.trim()}
+                    onClick={() => {
+                      const name = staffName.trim(),
+                        id = crypto.randomUUID()
+                      onAddStaff({
+                        id,
+                        name,
+                        region: c.region as Region,
+                        initials: name
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((n) => n[0])
+                          .join(''),
+                      })
+                      setAssigned([id])
+                      setStaffName('')
+                    }}
+                  >
+                    Add & assign
+                  </button>
+                </>
+              ) : (
+                <p>Ask an administrator to add your team for this region.</p>
+              )}
+            </div>
+          )}
           {staff
             .filter((s) => s.region === c.region)
             .map((s) => (

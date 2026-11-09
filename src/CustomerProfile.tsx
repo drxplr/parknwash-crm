@@ -1,3 +1,4 @@
+import { RegionBadge } from './RegionBadge'
 import { useState } from 'react'
 import {
   CalendarDays,
@@ -24,8 +25,6 @@ type Props = {
   store: Store
   today: string
   readOnly: boolean
-  setupNeeded: boolean
-  onSetup: () => void
   onBook: (vehicleId?: string) => void
   onOpenVehicle: (id: string) => void
   onOpenBooking: (id: string) => void
@@ -39,8 +38,6 @@ export function CustomerProfile({
   store,
   today,
   readOnly,
-  setupNeeded,
-  onSetup,
   onBook,
   onOpenVehicle,
   onOpenBooking,
@@ -79,7 +76,7 @@ export function CustomerProfile({
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
-  const ready = !setupNeeded && c.region !== 'Unassigned'
+  const ready = c.region !== 'Unassigned'
   function book(vehicleId?: string) {
     if (!vehicles.length) {
       setAddingVehicle(true)
@@ -89,10 +86,6 @@ export function CustomerProfile({
     if (c.region === 'Unassigned') {
       setEditing(true)
       setAddingVehicle(false)
-      return
-    }
-    if (setupNeeded) {
-      onSetup()
       return
     }
     onBook(vehicleId)
@@ -139,7 +132,7 @@ export function CustomerProfile({
           <div className="client-identity">
             <h2>{c.name}</h2>
             <p>
-              {c.region === 'Unassigned' ? 'Region not set' : c.region}
+              <RegionBadge region={c.region} />
               {c.type !== 'Unclassified' && <> · {c.type}</>}
             </p>
           </div>
@@ -172,9 +165,7 @@ export function CustomerProfile({
                 ? 'Add vehicle'
                 : c.region === 'Unassigned'
                   ? 'Set region'
-                  : setupNeeded
-                    ? 'Set up booking'
-                    : 'Book a wash'}
+                  : 'Book a wash'}
             </button>
           )}
           {wa && (

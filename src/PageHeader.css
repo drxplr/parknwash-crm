@@ -126,3 +126,32 @@
     margin-left: auto;
   }
 }
+
+/* Compact and consistent page rhythm. */
+.page-header {
+  min-height: 40px;
+  margin-bottom: 14px;
+  gap: 14px;
+  align-items: center;
+}
+.page-header-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-header-meta {
+  margin: 0;
+  font-size: 11px;
+}
+.page-header-title {
+  min-height: 40px;
+}
+@media (max-width: 900px) {
+  .page-header {
+    min-height: 40px;
+  }
+  .page-header-heading {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+}
