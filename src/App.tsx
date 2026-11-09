@@ -928,7 +928,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             {page === 'Bookings' && (
               <section className="card">
                 <div className="booking-toolbar">
-                  <div className="segmented">
+                  <div className="segmented selection-tabs">
                     {(['Calendar', 'List'] as const).map((v) => (
                       <button
                         className={view === v ? 'selected' : ''}
@@ -1077,7 +1077,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             )}
             {page === 'Customers' && (
               <div className="directory-controls">
-                <div className="segmented" aria-label="Directory view">
+                <div className="segmented selection-tabs" aria-label="Directory view">
                   {(['Customers', 'Vehicles'] as const).map((v) => (
                     <button
                       key={v}
@@ -1113,7 +1113,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             {page === 'Customers' && directoryView === 'Customers' && (
               <section className="card">
                 <div className="listing-toolbar">
-                  <div className="tabs">
+                  <div className="tabs selection-tabs">
                     {['All customers', 'Private', 'Business', 'Unclassified'].map((t) => (
                       <button
                         className={customerType === t ? 'selected' : ''}
@@ -1849,7 +1849,7 @@ function Profile({
         <h2>{title}</h2>
         <p>{subtitle}</p>
       </div>
-      <div className="profile-tabs tabs">
+      <div className="profile-tabs tabs selection-tabs">
         {['Overview', 'History', 'Bookings'].map((t) => (
           <button
             key={t}

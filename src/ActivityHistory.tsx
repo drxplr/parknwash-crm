@@ -58,7 +58,7 @@ export function ActivityHistory({
             Add note
           </button>
         ))}
-      <div className="activity-filters" role="group" aria-label="Filter activity">
+      <div className="activity-filters selection-tabs" role="group" aria-label="Filter activity">
         {[
           ['All activity', 'All'],
           ['booking', 'Bookings'],

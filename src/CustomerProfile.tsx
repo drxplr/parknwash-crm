@@ -207,7 +207,7 @@ export function CustomerProfile({
             </button>
           )}
         </div>
-        <div className="client-tabs" role="group" aria-label="Customer profile view">
+        <div className="client-tabs selection-tabs" role="group" aria-label="Customer profile view">
           {(['Overview', 'History', 'Bookings'] as const).map((t) => (
             <button
               key={t}

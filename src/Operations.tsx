@@ -72,7 +72,7 @@ export function Messages({
   return (
     <section className="operations">
       <div className="listing-toolbar">
-        <div className="tabs">
+        <div className="tabs selection-tabs">
           {['Queue', 'Manual follow-up', 'Sent'].map((t) => (
             <button
               key={t}
@@ -390,7 +390,7 @@ export function Settings({
   }
   return (
     <div className="settings-workspace">
-      <nav className="settings-nav" aria-label="Settings sections">
+      <nav className="settings-nav selection-tabs" aria-label="Settings sections">
         {sections.map(({ id, label, icon: Icon }) => (
           <button
             type="button"
@@ -437,7 +437,7 @@ export function Settings({
               <div className="package-settings">
                 <div className="package-toolbar">
                   <h2>Packages</h2>
-                  <div className="segmented">
+                  <div className="segmented selection-tabs">
                     {(['Ticino', 'Geneva'] as const).map((r) => (
                       <button
                         type="button"

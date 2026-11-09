@@ -1,0 +1,99 @@
+/* One selection treatment for views, sections and filters throughout the CRM. */
+.app-shell .selection-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  margin: 0;
+  background: #ededed;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+}
+.app-shell .selection-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: #737373;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: none;
+}
+.app-shell .selection-tabs button:hover {
+  color: #171717;
+  background: #e5e5e5;
+  text-decoration: none;
+}
+.app-shell .selection-tabs button:is(.selected, [aria-pressed='true'], [aria-current='page']) {
+  color: #171717;
+  background: #fff;
+  box-shadow: 0 1px 4px #17171712;
+}
+.app-shell .selection-tabs button svg {
+  width: 15px;
+  height: 15px;
+  color: inherit;
+}
+.app-shell .selection-tabs button:is(.selected, [aria-pressed='true'], [aria-current='page']) svg {
+  color: inherit;
+}
+.app-shell .selection-tabs button > :is(span.count-pill, small),
+.app-shell .selection-tabs:is(.tabs, .profile-tabs, .client-tabs) button > span {
+  background: #e4e4e4;
+  color: #525252;
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 400;
+}
+.app-shell
+  .selection-tabs
+  button:is(.selected, [aria-pressed='true'], [aria-current='page'])
+  > :is(span.count-pill, small),
+.app-shell
+  .selection-tabs:is(.tabs, .profile-tabs, .client-tabs)
+  button[aria-pressed='true']
+  > span {
+  background: #f0f0f0;
+  color: #525252;
+}
+.app-shell .selection-tabs button:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+.client-profile-top .selection-tabs {
+  margin-bottom: 12px;
+}
+.client-profile-body .selection-tabs {
+  margin-bottom: 18px;
+}
+@media (max-width: 600px) {
+  .app-shell .selection-tabs {
+    gap: 3px;
+  }
+  .app-shell .selection-tabs button {
+    padding: 8px 9px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 600px) {
+  .app-shell .settings-nav.selection-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+}
