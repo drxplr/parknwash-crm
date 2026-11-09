@@ -1,7 +1,7 @@
 import { websitePackages, websiteServices } from './websiteCatalog'
-import { Info } from 'lucide-react'
+import { Info, Package, Users, MapPin, Bell, Plus, Check } from 'lucide-react'
 import { Select } from './Select'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { DEMO_DATE, reminderQueue, whatsappLink, customerTypeLabel } from './model'
 import type { Customer, Store, Region, Reminder } from './model'
@@ -368,6 +368,15 @@ export function Settings({
 }) {
   const [draft, setDraft] = useState(structuredClone(store.settings)),
     [saved, setSaved] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [section, setSection] = useState('services')
+  const sections = [
+    { id: 'services', label: 'Services & pricing', icon: Package },
+    { id: 'team', label: 'Team', icon: Users },
+    { id: 'regions', label: 'Regions', icon: MapPin },
+    { id: 'reminders', label: 'Reminders', icon: Bell },
+  ]
+  const dirty = JSON.stringify(draft) !== JSON.stringify(store.settings)
   const [priceRegion, setPriceRegion] = useState<'Ticino' | 'Geneva'>('Ticino')
   const variants = ['S', 'M', 'L+'] as const
   const keys = ['Compact', 'Sedan', 'SUV'] as const
@@ -380,342 +389,447 @@ export function Settings({
     })
   }
   return (
-    <form
-      className="operations"
-      onChange={() => setSaved(false)}
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSave(draft)
-        setSaved(true)
-      }}
-    >
-      <div className="package-settings">
-        <div className="package-toolbar">
-          <h2>Packages</h2>
-          <div className="segmented">
-            {(['Ticino', 'Geneva'] as const).map((r) => (
-              <button
-                type="button"
-                key={r}
-                className={priceRegion === r ? 'selected' : ''}
-                aria-pressed={priceRegion === r}
-                onClick={() => setPriceRegion(r)}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-          <a
-            href="https://parknwash.ch/en/car-care/"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="View website prices"
-          >
-            ↗
-          </a>
-        </div>
-        <div className="table-scroll">
-          <table className="package-table">
-            <thead>
-              <tr>
-                <th>Package</th>
-                <th>S</th>
-                <th>M</th>
-                <th>XL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {websitePackages.map((pkg) => (
-                <tr key={pkg.name}>
-                  <th scope="row">{pkg.name.replace(' Care', '')}</th>
-                  {variants.map((size, j) => {
-                    const index = draft.services.findIndex(
-                      (s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`,
-                    )
-                    const service = draft.services[index]
-                    return (
-                      <td key={size}>
-                        {service ? (
-                          <div className="package-cell">
-                            <label>
-                              <span>CHF</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="10000"
-                                required
-                                value={service.tariffs[keys[j]] ?? service.price}
-                                aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} CHF`}
-                                onChange={(e) => {
-                                  const price = Number(e.target.value)
-                                  updateVariant(index, {
-                                    price,
-                                    tariffs: Object.fromEntries(
-                                      Object.keys(service.tariffs).map((k) => [k, price]),
-                                    ),
-                                  })
-                                }}
-                              />
-                            </label>
-                            <label className="package-duration">
-                              <input
-                                type="number"
-                                min="15"
-                                max="480"
-                                required
-                                value={service.duration}
-                                aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} minutes`}
-                                onChange={(e) =>
-                                  updateVariant(index, { duration: Number(e.target.value) })
-                                }
-                              />
-                              <span>min</span>
-                            </label>
-                          </div>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!websitePackages.every((pkg) =>
-          variants.every((size) =>
-            draft.services.some((s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`),
-          ),
-        ) && (
+    <div className="settings-workspace">
+      <nav className="settings-nav" aria-label="Settings sections">
+        {sections.map(({ id, label, icon: Icon }) => (
           <button
             type="button"
-            className="btn small-btn"
+            key={id}
+            aria-current={section === id ? 'page' : undefined}
             onClick={() => {
-              setSaved(false)
-              setDraft({
-                ...draft,
-                services: [
-                  ...draft.services,
-                  ...websiteServices().filter(
-                    (s) => !draft.services.some((x) => x.name === s.name),
-                  ),
-                ],
-              })
+              if (formRef.current?.reportValidity()) setSection(id)
             }}
           >
-            Load packages
+            <Icon size={17} />
+            <span>{label}</span>
+            {id === 'team' && <small>{draft.staff.length}</small>}
           </button>
-        )}
-      </div>
-      {draft.services.some((s) => !isWebsite(s.name)) && (
-        <details className="custom-services" open>
-          <summary>Other services</summary>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Service</th>
-                  <th>Minutes</th>
-                  <th>S · CHF</th>
-                  <th>M · CHF</th>
-                  <th>XL · CHF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.services
-                  .map((service, index) => ({ service, index }))
-                  .filter(({ service }) => !isWebsite(service.name))
-                  .map(({ service, index }) => (
-                    <tr key={index}>
-                      <td>
-                        <input
-                          required
-                          aria-label={`Custom service ${index + 1}`}
-                          value={service.name}
-                          onChange={(e) => updateVariant(index, { name: e.target.value })}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          required
-                          min="15"
-                          max="480"
-                          aria-label={`${service.name} minutes`}
-                          value={service.duration}
-                          onChange={(e) =>
-                            updateVariant(index, { duration: Number(e.target.value) })
-                          }
-                        />
-                      </td>
-                      {keys.map((key) => (
-                        <td key={key}>
-                          <input
-                            type="number"
-                            min="0"
-                            required
-                            aria-label={`${service.name} ${key} CHF`}
-                            value={service.tariffs[key] ?? service.price}
-                            onChange={(e) =>
-                              updateVariant(index, {
-                                tariffs: {
-                                  ...service.tariffs,
-                                  [key]: Number(e.target.value),
-                                  ...(key === 'Sedan' ? { Estate: Number(e.target.value) } : {}),
-                                },
-                              })
-                            }
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
-      <div className="settings-add-service">
-        <button
-          type="button"
-          className="btn small-btn"
-          onClick={() => {
-            setSaved(false)
-            setDraft({
-              ...draft,
-              services: [
-                ...draft.services,
-                {
-                  id: crypto.randomUUID(),
-                  name: '',
-                  duration: 60,
-                  price: 0,
-                  tariffs: { Compact: 0, Sedan: 0, Estate: 0, SUV: 0 },
-                },
-              ],
-            })
-          }}
+        ))}
+      </nav>
+      <form
+        ref={formRef}
+        className="operations settings-content"
+        onChange={() => setSaved(false)}
+        onSubmit={(e) => {
+          e.preventDefault()
+          onSave(draft)
+          setSaved(true)
+        }}
+      >
+        <section
+          className="settings-pane"
+          aria-label={sections.find((s) => s.id === section)?.label}
         >
-          Add service
-        </button>
-      </div>
-      <div className="settings-section">
-        <h2>Regions & staff</h2>
-        <details className="inline-help">
-          <summary>
-            <Info size={14} aria-hidden="true" />
-            <span>How region availability works</span>
-          </summary>
-          <p>Disabled regions cannot accept new bookings. Existing bookings stay available.</p>
-        </details>
-        {(['Geneva', 'Ticino'] as Region[]).map((r) => (
-          <div className="region-setting" key={r}>
-            <label>
-              <input
-                type="checkbox"
-                checked={draft.regions[r].enabled}
-                onChange={(e) =>
+          <header className="settings-pane-header">
+            <h2>{sections.find((s) => s.id === section)?.label}</h2>
+            <p>
+              {section === 'services'
+                ? 'Prices in CHF, by region and vehicle size.'
+                : section === 'team'
+                  ? 'People available for booking assignments.'
+                  : section === 'regions'
+                    ? 'Coverage and availability for new bookings.'
+                    : 'Default timing for your message queue.'}
+            </p>
+          </header>
+          {section === 'services' && (
+            <>
+              <div className="package-settings">
+                <div className="package-toolbar">
+                  <h2>Packages</h2>
+                  <div className="segmented">
+                    {(['Ticino', 'Geneva'] as const).map((r) => (
+                      <button
+                        type="button"
+                        key={r}
+                        className={priceRegion === r ? 'selected' : ''}
+                        aria-pressed={priceRegion === r}
+                        onClick={() => setPriceRegion(r)}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <a
+                    href="https://parknwash.ch/en/car-care/"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="View website prices"
+                  >
+                    ↗
+                  </a>
+                </div>
+                <div className="table-scroll">
+                  <table className="package-table">
+                    <thead>
+                      <tr>
+                        <th>Package</th>
+                        <th>S</th>
+                        <th>M</th>
+                        <th>XL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {websitePackages.map((pkg) => (
+                        <tr key={pkg.name}>
+                          <th scope="row">{pkg.name.replace(' Care', '')}</th>
+                          {variants.map((size, j) => {
+                            const index = draft.services.findIndex(
+                              (s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`,
+                            )
+                            const service = draft.services[index]
+                            return (
+                              <td key={size}>
+                                {service ? (
+                                  <div className="package-cell">
+                                    <label>
+                                      <span>CHF</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="10000"
+                                        required
+                                        value={service.tariffs[keys[j]] ?? service.price}
+                                        aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} CHF`}
+                                        onChange={(e) => {
+                                          const price = Number(e.target.value)
+                                          updateVariant(index, {
+                                            price,
+                                            tariffs: Object.fromEntries(
+                                              Object.keys(service.tariffs).map((k) => [k, price]),
+                                            ),
+                                          })
+                                        }}
+                                      />
+                                    </label>
+                                    <label className="package-duration">
+                                      <input
+                                        type="number"
+                                        min="15"
+                                        max="480"
+                                        required
+                                        value={service.duration}
+                                        aria-label={`${pkg.name} ${priceRegion} ${size === 'L+' ? 'XL' : size} minutes`}
+                                        onChange={(e) =>
+                                          updateVariant(index, { duration: Number(e.target.value) })
+                                        }
+                                      />
+                                      <span>min</span>
+                                    </label>
+                                  </div>
+                                ) : (
+                                  <span className="muted">—</span>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {!websitePackages.every((pkg) =>
+                  variants.every((size) =>
+                    draft.services.some((s) => s.name === `${pkg.name} · ${priceRegion} · ${size}`),
+                  ),
+                ) && (
+                  <button
+                    type="button"
+                    className="btn small-btn"
+                    onClick={() => {
+                      setSaved(false)
+                      setDraft({
+                        ...draft,
+                        services: [
+                          ...draft.services,
+                          ...websiteServices().filter(
+                            (s) => !draft.services.some((x) => x.name === s.name),
+                          ),
+                        ],
+                      })
+                    }}
+                  >
+                    Load packages
+                  </button>
+                )}
+              </div>
+              {draft.services.some((s) => !isWebsite(s.name)) && (
+                <details className="custom-services" open>
+                  <summary>Other services</summary>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Service</th>
+                          <th>Minutes</th>
+                          <th>S · CHF</th>
+                          <th>M · CHF</th>
+                          <th>XL · CHF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {draft.services
+                          .map((service, index) => ({ service, index }))
+                          .filter(({ service }) => !isWebsite(service.name))
+                          .map(({ service, index }) => (
+                            <tr key={index}>
+                              <td>
+                                <input
+                                  required
+                                  aria-label={`Custom service ${index + 1}`}
+                                  value={service.name}
+                                  onChange={(e) => updateVariant(index, { name: e.target.value })}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  required
+                                  min="15"
+                                  max="480"
+                                  aria-label={`${service.name} minutes`}
+                                  value={service.duration}
+                                  onChange={(e) =>
+                                    updateVariant(index, { duration: Number(e.target.value) })
+                                  }
+                                />
+                              </td>
+                              {keys.map((key) => (
+                                <td key={key}>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    aria-label={`${service.name} ${key} CHF`}
+                                    value={service.tariffs[key] ?? service.price}
+                                    onChange={(e) =>
+                                      updateVariant(index, {
+                                        tariffs: {
+                                          ...service.tariffs,
+                                          [key]: Number(e.target.value),
+                                          ...(key === 'Sedan'
+                                            ? { Estate: Number(e.target.value) }
+                                            : {}),
+                                        },
+                                      })
+                                    }
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+              <div className="settings-add-service">
+                <button
+                  type="button"
+                  className="btn small-btn"
+                  onClick={() => {
+                    setSaved(false)
+                    setDraft({
+                      ...draft,
+                      services: [
+                        ...draft.services,
+                        {
+                          id: crypto.randomUUID(),
+                          name: '',
+                          duration: 60,
+                          price: 0,
+                          tariffs: { Compact: 0, Sedan: 0, Estate: 0, SUV: 0 },
+                        },
+                      ],
+                    })
+                  }}
+                >
+                  Add service
+                </button>
+              </div>
+            </>
+          )}
+          {section === 'regions' && (
+            <div className="settings-region-list">
+              {(['Geneva', 'Ticino'] as Region[]).map((r) => (
+                <div className="settings-region-card" key={r}>
+                  <label className="settings-region-toggle">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label={`${r} accepts new bookings`}
+                      checked={draft.regions[r].enabled}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          regions: {
+                            ...draft.regions,
+                            [r]: { ...draft.regions[r], enabled: e.target.checked },
+                          },
+                        })
+                      }
+                    />{' '}
+                    <strong>{r}</strong>
+                    <span>{draft.regions[r].enabled ? 'Accepting bookings' : 'Paused'}</span>
+                  </label>
+                  <label className="field">
+                    Coverage
+                    <input
+                      aria-label={`${r} coverage`}
+                      value={draft.regions[r].notes}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          regions: {
+                            ...draft.regions,
+                            [r]: { ...draft.regions[r], notes: e.target.value },
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+              <p className="settings-footnote">
+                Pausing a region keeps existing bookings available.
+              </p>
+            </div>
+          )}
+          {section === 'team' && (
+            <div className="settings-team-list">
+              {!draft.staff.length && (
+                <div className="settings-empty">
+                  <Users size={24} />
+                  <h3>Add your first team member</h3>
+                  <p>Then assign them to washes in their region.</p>
+                </div>
+              )}
+              {draft.staff.map((s, i) => (
+                <div className="settings-staff-row" key={s.id}>
+                  <span className="avatar">
+                    {s.name
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((n) => n[0])
+                      .join('') || <Users size={16} />}
+                  </span>
+                  <label className="field">
+                    Name
+                    <input
+                      aria-label={`Staff ${i + 1} name`}
+                      required
+                      value={s.name}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          staff: draft.staff.map((x, j) =>
+                            i === j ? { ...x, name: e.target.value } : x,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    Region
+                    <Select
+                      aria-label={`Staff ${i + 1} region`}
+                      value={s.region}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          staff: draft.staff.map((x, j) =>
+                            i === j ? { ...x, region: e.target.value as Region } : x,
+                          ),
+                        })
+                      }
+                    >
+                      <option>Geneva</option>
+                      <option>Ticino</option>
+                    </Select>
+                  </label>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
                   setDraft({
                     ...draft,
-                    regions: {
-                      ...draft.regions,
-                      [r]: { ...draft.regions[r], enabled: e.target.checked },
-                    },
+                    staff: [
+                      ...draft.staff,
+                      { id: crypto.randomUUID(), name: '', initials: '', region: 'Geneva' },
+                    ],
                   })
                 }
-              />{' '}
-              {r}
-            </label>
-            <input
-              aria-label={`${r} coverage`}
-              value={draft.regions[r].notes}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  regions: {
-                    ...draft.regions,
-                    [r]: { ...draft.regions[r], notes: e.target.value },
-                  },
-                })
-              }
-            />
-          </div>
-        ))}
-        {draft.staff.map((s, i) => (
-          <div className="region-setting" key={s.id}>
-            <input
-              aria-label={`Staff ${i + 1} name`}
-              required
-              value={s.name}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  staff: draft.staff.map((x, j) => (i === j ? { ...x, name: e.target.value } : x)),
-                })
-              }
-            />
-            <Select
-              aria-label={`Staff ${i + 1} region`}
-              value={s.region}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  staff: draft.staff.map((x, j) =>
-                    i === j ? { ...x, region: e.target.value as Region } : x,
-                  ),
-                })
-              }
+              >
+                <Plus size={15} /> Add team member
+              </button>
+            </div>
+          )}
+          {section === 'reminders' && (
+            <div className="settings-reminders">
+              <div className="form-grid">
+                <label className="field">
+                  Default wash interval · days
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={draft.reminderDays}
+                    onChange={(e) => setDraft({ ...draft, reminderDays: Number(e.target.value) })}
+                  />
+                </label>
+                <label className="field">
+                  Appointment reminder · hours before
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={draft.appointmentHours}
+                    onChange={(e) =>
+                      setDraft({ ...draft, appointmentHours: Number(e.target.value) })
+                    }
+                  />
+                </label>
+              </div>
+              <p className="settings-footnote">
+                Customer-specific intervals override the default. Messages are sent manually.
+              </p>
+            </div>
+          )}
+        </section>
+        <footer className="settings-savebar">
+          <span role="status">
+            {dirty ? (
+              'Unsaved changes'
+            ) : saved ? (
+              <>
+                <Check size={14} /> Changes saved
+              </>
+            ) : (
+              'All changes saved'
+            )}
+          </span>
+          {dirty && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setDraft(structuredClone(store.settings))
+                setSaved(false)
+              }}
             >
-              <option>Geneva</option>
-              <option>Ticino</option>
-            </Select>
-          </div>
-        ))}
-      </div>
-      <div className="settings-section">
-        <button
-          type="button"
-          className="btn"
-          onClick={() =>
-            setDraft({
-              ...draft,
-              staff: [
-                ...draft.staff,
-                { id: crypto.randomUUID(), name: '', initials: '', region: 'Geneva' },
-              ],
-            })
-          }
-        >
-          Add staff member
-        </button>
-        <h2>Reminders</h2>
-        <div className="form-grid">
-          <label className="field">
-            Default wash interval · days
-            <input
-              required
-              type="number"
-              min="1"
-              max="365"
-              value={draft.reminderDays}
-              onChange={(e) => setDraft({ ...draft, reminderDays: Number(e.target.value) })}
-            />
-          </label>
-          <label className="field">
-            Appointment reminder · hours before
-            <input
-              required
-              type="number"
-              min="1"
-              max="168"
-              value={draft.appointmentHours}
-              onChange={(e) => setDraft({ ...draft, appointmentHours: Number(e.target.value) })}
-            />
-          </label>
-        </div>
-        <button className="btn primary">{saved ? 'Settings saved' : 'Save settings'}</button>
-      </div>
-    </form>
+              Discard
+            </button>
+          )}
+          <button className="btn primary" disabled={!dirty}>
+            Save changes
+          </button>
+        </footer>
+      </form>
+    </div>
   )
 }
