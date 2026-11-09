@@ -4,7 +4,13 @@ import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
 import { layoutBookings, minutes } from './calendarModel'
 import { customerColorStyle } from './customerColors'
 import type { Store } from './model'
-export type BookingStart = { date: string; time: string; staffId?: string }
+export type BookingStart = {
+  date: string
+  time: string
+  staffId?: string
+  customerId?: string
+  vehicleId?: string
+}
 const hourHeight = 60
 
 export function ScheduleCalendar({

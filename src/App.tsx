@@ -1,3 +1,5 @@
+import { CustomerProfile } from './CustomerProfile'
+import { ActivityHistory } from './ActivityHistory'
 import { PageHeader } from './PageHeader'
 import { DatePicker } from './DatePicker'
 import { serviceFits, sizeLabels } from './websiteCatalog'
@@ -6,7 +8,7 @@ import type { BookingStart } from './Calendar'
 import { startOfWeek, calendarRangeLabel } from './calendarModel'
 import { Select } from './Select'
 import { customerColorStyle } from './customerColors'
-import { Messages, Settings, CustomerDetails } from './Operations'
+import { Messages, Settings } from './Operations'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -107,11 +109,13 @@ function Dialog({
   onClose,
   title,
   wide = false,
+  className = '',
 }: {
   children: ReactNode
   onClose: () => void
   title: string
   wide?: boolean
+  className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null),
     closeRef = useRef(onClose)
@@ -171,7 +175,7 @@ function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={wide ? 'modal' : 'drawer'}
+        className={`${wide ? 'modal' : 'drawer'} ${className}`}
       >
         <div className="dialog-top">
           <span>{title}</span>
@@ -1441,11 +1445,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
           (detail.kind === 'booking' ? store.bookings.some((b) => b.id === detail.id) : true) && (
             <Dialog
               key={`${detail.kind}-${detail.id}`}
+              className={detail.kind === 'customer' ? 'client-drawer' : undefined}
               title={
                 detail.kind === 'booking'
                   ? `Bookings / ${detail.id}`
                   : detail.kind === 'customer'
-                    ? 'Customers / Profile'
+                    ? 'Customer'
                     : 'Vehicles / Profile'
               }
               onClose={() => setDetail(null)}
@@ -1471,117 +1476,72 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   ? (() => {
                       const c = customer(detail.id)
                       return (
-                        <Profile
-                          key={c.id}
-                          title={c.name}
-                          subtitle={`${customerTypeLabel(c.type)} · ${c.region}`}
+                        <CustomerProfile
                           customer={c}
-                          notes={c.notes}
-                          saveNotes={(text) => saveNotes('customer', c.id, text)}
-                          activities={store.activities.filter((a) => a.customerId === c.id)}
-                          addNote={(text) => addNote(c.id, text)}
-                          bookings={store.bookings.filter((b) => owner(b).id === c.id)}
-                          renderBookings={(bs) => bookingRows(bs, true)}
-                        >
-                          <div className="contact-summary">
-                            <div>
-                              <span>Contact</span>
-                              <strong>{c.contact || c.name}</strong>
-                              <div className="contact-actions">
-                                {c.phone ? (
-                                  <a href={`tel:${c.phone.replace(/[^+0-9]/g, '')}`}>{c.phone}</a>
-                                ) : (
-                                  <span>Phone not added</span>
-                                )}
-                                {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
-                              </div>
-                            </div>
-                            <div>
-                              <span>Service addresses</span>
-                              {(c.addresses?.length ? c.addresses : [c.address])
-                                .filter(Boolean)
-                                .map((address, i) => (
-                                  <p key={i}>
-                                    <MapPin size={14} />
-                                    {address}
-                                  </p>
-                                ))}
-                            </div>
-                            {(c.contacts?.length ?? 0) > 1 && (
-                              <div>
-                                <span>Other contacts</span>
-                                <p>{c.contacts!.slice(1).join(' · ')}</p>
-                              </div>
-                            )}
-                          </div>
-                          <CustomerDetails
-                            customer={c}
-                            defaultDays={store.settings.reminderDays}
-                            onSave={(updated) => {
-                              setStore((s) => ({
-                                ...s,
-                                customers: s.customers.map((x) => (x.id === c.id ? updated : x)),
-                                activities: [
-                                  {
-                                    id: crypto.randomUUID(),
-                                    customerId: c.id,
-                                    at: new Date().toISOString(),
-                                    title: 'Customer details updated',
-                                    text: 'Contacts, addresses and reminder preferences saved.',
-                                    kind: 'note',
-                                    author: cloud?.label ?? 'Demo manager',
-                                  },
-                                  ...s.activities,
-                                ],
-                              }))
-                              setToast('Customer updated')
-                            }}
-                          />
-                          <NotesEditor
-                            notes={c.notes}
-                            onSave={(text) => saveNotes('customer', c.id, text)}
-                          />
-                          <div className="profile-section">
-                            <h3>
-                              Vehicles{' '}
-                              <span className="count-pill">
-                                {store.vehicles.filter((v) => v.customerId === c.id).length}
-                              </span>
-                            </h3>
-                            {store.vehicles
-                              .filter((v) => v.customerId === c.id)
-                              .map((v) => (
-                                <button
-                                  className="profile-vehicle"
-                                  key={v.id}
-                                  onClick={() => setDetail({ kind: 'vehicle', id: v.id })}
-                                >
-                                  <CarFront size={23} />
-                                  <div>
-                                    <strong>
-                                      {v.model}{' '}
-                                      <small
-                                        className="vehicle-size"
-                                        title={
-                                          v.notes.startsWith('[Size review]')
-                                            ? 'Size needs review'
-                                            : 'Vehicle size'
-                                        }
-                                      >
-                                        {sizeLabels[v.size] ?? '—'}
-                                        {v.notes.startsWith('[Size review]') ? ' ?' : ''}
-                                      </small>
-                                    </strong>
-                                    <span>
-                                      {[v.plate, v.color].filter(Boolean).join(' · ') ||
-                                        'Vehicle details needed'}
-                                    </span>
-                                  </div>
-                                  <ChevronRight size={16} />
-                                </button>
-                              ))}
-                          </div>
-                        </Profile>
+                          store={store}
+                          today={today}
+                          readOnly={cloud?.role === 'viewer'}
+                          setupNeeded={!store.settings.services.length || !staff.length}
+                          onSetup={() => {
+                            if (!cloud || cloud.role === 'admin') {
+                              setDetail(null)
+                              navigate('Settings')
+                            } else setToast('Ask an administrator to add services and staff.')
+                          }}
+                          onBook={(vehicleId) => {
+                            setDetail(null)
+                            setBookingStart({
+                              date: today,
+                              time: '09:00',
+                              customerId: c.id,
+                              vehicleId,
+                            })
+                            setNewBooking(true)
+                          }}
+                          onOpenVehicle={(id) => setDetail({ kind: 'vehicle', id })}
+                          onOpenBooking={(id) => setDetail({ kind: 'booking', id })}
+                          onSaveCustomer={(updated) => {
+                            setStore((s) => ({
+                              ...s,
+                              customers: s.customers.map((x) => (x.id === c.id ? updated : x)),
+                              activities: [
+                                {
+                                  id: crypto.randomUUID(),
+                                  customerId: c.id,
+                                  at: new Date().toISOString(),
+                                  title: 'Customer details updated',
+                                  text: 'Contacts, addresses and reminder preferences saved.',
+                                  kind: 'note',
+                                  author: cloud?.label ?? 'Demo manager',
+                                },
+                                ...s.activities,
+                              ],
+                            }))
+                            setToast('Customer updated')
+                          }}
+                          onSaveNotes={(text) => saveNotes('customer', c.id, text)}
+                          onAddNote={(text) => addNote(c.id, text)}
+                          onAddVehicle={(v) => {
+                            setStore((s) => ({
+                              ...s,
+                              vehicles: [...s.vehicles, v],
+                              activities: [
+                                {
+                                  id: crypto.randomUUID(),
+                                  customerId: c.id,
+                                  vehicleId: v.id,
+                                  at: new Date().toISOString(),
+                                  title: 'Vehicle added',
+                                  text: v.model,
+                                  kind: 'note',
+                                  author: cloud?.label ?? 'Demo manager',
+                                },
+                                ...s.activities,
+                              ],
+                            }))
+                            setToast('Vehicle added')
+                          }}
+                        />
                       )
                     })()
                   : (() => {
@@ -1890,9 +1850,7 @@ function Profile({
   renderBookings: (b: Booking[]) => ReactNode
   children: ReactNode
 }) {
-  const [tab, setTab] = useState('Overview'),
-    [draft, setDraft] = useState(''),
-    [activityKind, setActivityKind] = useState('All activity')
+  const [tab, setTab] = useState('Overview')
   return (
     <>
       <div className="profile-heading">
@@ -1944,90 +1902,7 @@ function Profile({
             )}
           </div>
         ) : (
-          <>
-            <form
-              className="add-note"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (draft.trim()) {
-                  addNote(draft.trim())
-                  setDraft('')
-                }
-              }}
-            >
-              <label htmlFor="activity-note">Add a note</label>
-              <textarea
-                id="activity-note"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Write a note…"
-                required
-              />
-              <div>
-                <span>
-                  <MessageSquare size={12} /> Internal note
-                </span>
-                <button className="btn primary small-btn" disabled={!draft.trim()}>
-                  <Plus size={13} />
-                  Add note
-                </button>
-              </div>
-            </form>
-            <div className="activity-filters" role="group" aria-label="Filter activity">
-              {[
-                ['All activity', 'All'],
-                ['booking', 'Bookings'],
-                ['payment', 'Payments'],
-                ['note', 'Notes'],
-                ['message', 'Messages'],
-              ].map(([value, label]) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={activityKind === value}
-                  onClick={() => setActivityKind(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="timeline">
-              {[...activities]
-                .filter((a) => activityKind === 'All activity' || a.kind === activityKind)
-                .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-                .map((a) => (
-                  <div className="timeline-item" key={a.id}>
-                    <div className={`timeline-icon ${a.kind === 'note' ? 'note' : ''}`}>
-                      {a.kind === 'booking' ? (
-                        <CalendarDays size={13} />
-                      ) : a.kind === 'payment' ? (
-                        <CreditCard size={13} />
-                      ) : (
-                        <MessageSquare size={13} />
-                      )}
-                    </div>
-                    <div>
-                      <h4>{a.title}</h4>
-                      <p>{a.text}</p>
-                      <span>
-                        {a.author} ·{' '}
-                        {new Date(a.at).toLocaleString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Europe/Zurich',
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              {!activities.some(
-                (a) => activityKind === 'All activity' || a.kind === activityKind,
-              ) && <p className="activity-empty">No activity of this type yet.</p>}
-            </div>
-          </>
+          <ActivityHistory activities={activities} addNote={addNote} />
         )}
       </div>
     </>
@@ -2282,15 +2157,22 @@ function NewBooking({
   onCreate: (b: Booking) => void
 }) {
   const { services, staff } = store.settings
+  const requestedVehicle = store.vehicles.find((v) => v.id === initial?.vehicleId)
   const initialCustomer =
+    store.customers.find(
+      (c) =>
+        c.id === (requestedVehicle?.customerId ?? initial?.customerId) &&
+        store.vehicles.some((v) => v.customerId === c.id),
+    ) ??
     store.customers.find(
       (c) =>
         store.vehicles.some((v) => v.customerId === c.id) &&
         (!initial?.staffId || staff.find((s) => s.id === initial.staffId)?.region === c.region),
-    ) ?? store.customers[0]
+    ) ??
+    store.customers[0]
   const [customerId, setCustomerId] = useState(initialCustomer.id),
     [vehicleId, setVehicleId] = useState(
-      store.vehicles.find((v) => v.customerId === initialCustomer.id)!.id,
+      requestedVehicle?.id ?? store.vehicles.find((v) => v.customerId === initialCustomer.id)!.id,
     ),
     [service, setService] = useState(
       (initial

@@ -221,10 +221,14 @@ export function CustomerDetails({
   customer: c,
   defaultDays,
   onSave,
+  inline = false,
+  onCancel,
 }: {
   customer: Customer
   defaultDays: number
   onSave: (c: Customer) => void
+  inline?: boolean
+  onCancel?: () => void
 }) {
   const [name, setName] = useState(c.name),
     [email, setEmail] = useState(c.email)
@@ -236,10 +240,11 @@ export function CustomerDetails({
     [whatsappOptIn, setWhatsappOptIn] = useState(c.whatsappOptIn ?? false),
     [type, setType] = useState(c.type),
     [region, setRegion] = useState(c.region)
+  const Wrapper = inline ? 'div' : 'details'
   return (
     <>
-      <details className="customer-details">
-        <summary>Edit customer details & reminders</summary>
+      <Wrapper className="customer-details">
+        {!inline && <summary>Edit customer details & reminders</summary>}
         <form
           className="settings-section"
           onChange={() => setSaved(false)}
@@ -340,9 +345,16 @@ export function CustomerDetails({
               onChange={(e) => setDays(Number(e.target.value))}
             />
           </label>
-          <button className="btn">{saved ? 'Saved' : 'Save customer details'}</button>
+          <div className="customer-editor-actions">
+            {onCancel && (
+              <button type="button" className="btn" onClick={onCancel}>
+                Cancel
+              </button>
+            )}
+            <button className="btn primary">{saved ? 'Saved' : 'Save changes'}</button>
+          </div>
         </form>
-      </details>
+      </Wrapper>
     </>
   )
 }
