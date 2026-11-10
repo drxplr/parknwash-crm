@@ -1,3 +1,4 @@
+import { authErrorMessage, retryConnectionOnce, retryPasswordSignIn } from './connectionRecovery'
 import { PasswordSetup } from './PasswordSetup'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
@@ -29,12 +30,15 @@ const client =
 export default function CloudApp() {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false),
-    [loading, setLoading] = useState(false)
+    [workspaceLoading, setWorkspaceLoading] = useState(false)
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null),
     [version, setVersion] = useState(0)
   const [error, setError] = useState(''),
     [email, setEmail] = useState(''),
     [sent, setSent] = useState(false)
+  const [signingIn, setSigningIn] = useState(false)
+  const authAttempt = useRef(0),
+    loginPending = useRef(false)
   const [password, setPassword] = useState('')
   const [passwordFlow, setPasswordFlow] = useState(
     entryFlow === 'invite' || entryFlow === 'recovery',
@@ -59,8 +63,9 @@ export default function CloudApp() {
         sequence.current++
         snapshotRef.current = null
         setSnapshot(null)
-        setLoading(false)
+        setWorkspaceLoading(false)
         setUpdatesAvailable(false)
+        setError('')
       }
       // This user-editable marker only controls onboarding UI, never authorization.
       if (next?.user.invited_at && next.user.user_metadata?.crm_password_set !== true)
@@ -76,12 +81,20 @@ export default function CloudApp() {
       if (event === 'PASSWORD_RECOVERY') setPasswordFlow(true)
       acceptSession(next)
     })
-    void client.auth.getSession().then(({ data, error }) => {
-      if (active && initialSequence === sequence.current) {
-        acceptSession(data.session)
-        setError(error?.message ?? '')
-      }
-    })
+    void client.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (active && initialSequence === sequence.current) {
+          acceptSession(data.session)
+          setError(error ? authErrorMessage(error, 'sign-in') : '')
+        }
+      })
+      .catch((error: unknown) => {
+        if (active && initialSequence === sequence.current) {
+          setReady(true)
+          setError(authErrorMessage(error, 'sign-in'))
+        }
+      })
     return () => {
       active = false
       subscription.unsubscribe()
@@ -90,21 +103,27 @@ export default function CloudApp() {
   async function load() {
     if (!client || !session || activeUser.current !== session.user.id) return
     const seq = ++sequence.current
-    setLoading(true)
+    setWorkspaceLoading(true)
     setError('')
     try {
-      const accepted = await client.rpc('crm_accept_access')
-      if (accepted.error) throw accepted.error
-      const { data, error } = await client
-        .from('crm_members')
-        .select('workspace_id')
-        .eq('user_id', session.user.id)
-      if (error) throw error
-      if (data?.length !== 1)
-        throw new Error(
-          'Your account has no active workspace access. Ask an administrator to check your access.',
-        )
-      const next = await loadSnapshot(client, data[0].workspace_id)
+      const userId = session.user.id
+      const next = await retryConnectionOnce(
+        async () => {
+          const accepted = await client.rpc('crm_accept_access')
+          if (accepted.error) throw accepted.error
+          const { data, error } = await client
+            .from('crm_members')
+            .select('workspace_id')
+            .eq('user_id', userId)
+          if (error) throw error
+          if (data?.length !== 1)
+            throw new Error(
+              'Your account has no active workspace access. Ask an administrator to check your access.',
+            )
+          return loadSnapshot(client, data[0].workspace_id)
+        },
+        () => seq === sequence.current && activeUser.current === userId,
+      )
       if (seq === sequence.current) {
         setSnapshot(next)
         setVersion((v) => v + 1)
@@ -112,10 +131,10 @@ export default function CloudApp() {
     } catch (e) {
       if (seq === sequence.current) {
         setSnapshot(null)
-        setError(message(e))
+        setError(authErrorMessage(e, 'workspace'))
       }
     } finally {
-      if (seq === sequence.current) setLoading(false)
+      if (seq === sequence.current) setWorkspaceLoading(false)
     }
   }
   useEffect(() => {
@@ -160,15 +179,20 @@ export default function CloudApp() {
   }, [session?.user.id, snapshot?.workspace.id])
   async function login(event: FormEvent) {
     event.preventDefault()
-    if (!client) return
+    if (!client || loginPending.current) return
+    loginPending.current = true
+    const attempt = ++authAttempt.current
     signedOut.current = false
-    setLoading(true)
+    setSigningIn(true)
     setError('')
     setSent(false)
     try {
       const result =
         method === 'password'
-          ? await client.auth.signInWithPassword({ email: email.trim(), password })
+          ? await retryPasswordSignIn(
+              () => client.auth.signInWithPassword({ email: email.trim(), password }),
+              () => attempt === authAttempt.current,
+            )
           : await client.auth.signInWithOtp({
               email: email.trim(),
               options: {
@@ -176,16 +200,23 @@ export default function CloudApp() {
                 emailRedirectTo: location.origin + location.pathname,
               },
             })
+      if (attempt !== authAttempt.current) return
       if (result.error) throw result.error
       setPassword('')
       if (method !== 'password') setSent(true)
     } catch (e) {
-      setError(message(e))
+      if (attempt === authAttempt.current) setError(authErrorMessage(e, 'sign-in'))
     } finally {
-      setLoading(false)
+      if (attempt === authAttempt.current) {
+        loginPending.current = false
+        setSigningIn(false)
+      }
     }
   }
   async function signOut() {
+    authAttempt.current++
+    loginPending.current = false
+    setSigningIn(false)
     signedOut.current = true
     activeUser.current = null
     // Clear customer state before awaiting the network, including offline logout.
@@ -193,7 +224,7 @@ export default function CloudApp() {
     setSnapshot(null)
     snapshotRef.current = null
     setSession(null)
-    setLoading(false)
+    setWorkspaceLoading(false)
     setUpdatesAvailable(false)
     setPassword('')
     setPasswordFlow(false)
@@ -261,7 +292,7 @@ export default function CloudApp() {
         onSignOut={() => void signOut()}
       />
     )
-  if (snapshot && session && !loading)
+  if (snapshot && session && !workspaceLoading)
     return (
       <>
         {updatesAvailable && (
@@ -309,7 +340,7 @@ export default function CloudApp() {
           <p role="alert" className="form-error">
             Connection is not configured. Contact the administrator.
           </p>
-        ) : !ready || loading ? (
+        ) : !ready || signingIn || workspaceLoading || (session && !snapshot && !error) ? (
           <p role="status" className="auth-status">
             Connecting securely…
           </p>
@@ -325,7 +356,7 @@ export default function CloudApp() {
             </button>
           </div>
         ) : (
-          <form onSubmit={login}>
+          <form onSubmit={login} aria-busy={signingIn}>
             <label className="field">
               Email
               <input
@@ -352,8 +383,12 @@ export default function CloudApp() {
                 />
               </label>
             )}
-            <button className="btn primary auth-submit">
-              {method === 'password' ? 'Sign in' : 'Email me a sign-in link'}
+            <button className="btn primary auth-submit" disabled={signingIn || !ready}>
+              {signingIn
+                ? 'Signing in…'
+                : method === 'password'
+                  ? 'Sign in'
+                  : 'Email me a sign-in link'}
               <ArrowRight size={16} />
             </button>
             {emailAuthEnabled && (
@@ -388,9 +423,4 @@ export default function CloudApp() {
       </section>
     </main>
   )
-}
-function message(error: unknown) {
-  return error && typeof error === 'object' && 'message' in error
-    ? String(error.message)
-    : 'Unable to connect. Please try again.'
 }
