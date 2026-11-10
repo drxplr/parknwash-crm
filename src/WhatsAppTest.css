@@ -148,3 +148,70 @@
     justify-content: center;
   }
 }
+.wa-template-heading,
+.wa-templates article > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wa-template-heading {
+  margin-top: 28px;
+}
+.wa-template-heading h3,
+.wa-templates h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+.wa-templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.wa-templates article {
+  background: #f5f5f5;
+  border-radius: 20px;
+  padding: 20px;
+  min-width: 0;
+}
+.wa-message-preview {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #171717;
+}
+.wa-template-instructions {
+  margin-top: 18px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.wa-template-instructions summary {
+  cursor: pointer;
+  color: #525252;
+}
+.wa-template-instructions label {
+  display: block;
+  margin-top: 12px;
+}
+.wa-template-instructions code,
+.wa-template-instructions pre {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  user-select: text;
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+}
+.wa-template-instructions p {
+  color: #525252;
+}
+.wa-log strong {
+  overflow-wrap: anywhere;
+}

@@ -1,3 +1,4 @@
+import { renderBookingMessage } from './whatsappTemplates'
 import { websiteServices } from './websiteCatalog'
 import { assignCustomerColors } from './customerColors'
 export type Region = 'Geneva' | 'Ticino'
@@ -121,7 +122,7 @@ export interface Reminder {
   customerId: string
   vehicleId?: string
   bookingId?: string
-  type: 'Wash reminder' | 'Appointment reminder' | 'Manual follow-up'
+  type: 'Booking confirmation' | 'Wash reminder' | 'Appointment reminder' | 'Manual follow-up'
   reason: string
   text: string
 }
@@ -772,7 +773,27 @@ export function reminderQueue(store: Store, now = `${DEMO_DATE}T08:00:00+01:00`)
       (b) =>
         !['Cancelled', 'Completed'].includes(b.status) && swissInstant(b.date, b.time) >= instant,
     )
-    for (const b of upcoming) {
+    for (const b of upcoming.filter((b) => b.status === 'Confirmed')) {
+      const vehicle = vehicles.find((v) => v.id === b.vehicleId)!
+      const parameters = [
+        c.contact.split(' · ')[0] || c.name,
+        b.service,
+        vehicle.model,
+        dayLabel(b.date),
+        b.time,
+        b.address,
+      ]
+      // A changed appointment needs a fresh confirmation; saved manual sends suppress duplicates.
+      const revision = JSON.stringify([b.date, b.time, b.service, b.vehicleId, b.address])
+      queue.push({
+        key: `confirmation-${b.id}-${revision}`,
+        customerId: c.id,
+        vehicleId: b.vehicleId,
+        bookingId: b.id,
+        type: 'Booking confirmation',
+        reason: `${dayLabel(b.date)} · ${b.time}`,
+        text: renderBookingMessage('confirmation', parameters),
+      })
       const hours = (swissInstant(b.date, b.time) - instant) / 3600000
       if (hours <= store.settings.appointmentHours)
         queue.push({
@@ -782,7 +803,7 @@ export function reminderQueue(store: Store, now = `${DEMO_DATE}T08:00:00+01:00`)
           bookingId: b.id,
           type: 'Appointment reminder',
           reason: `${dayLabel(b.date)} · ${b.time}`,
-          text: `Hi ${c.contact.split(' · ')[0]}! Your Park n Wash appointment is on ${dayLabel(b.date)} at ${b.time}, at ${b.address}. Please let us know if anything changes.`,
+          text: renderBookingMessage('reminder', parameters),
         })
     }
     // Suppress across the account: a fleet or private customer already has a next visit.

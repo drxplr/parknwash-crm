@@ -43,6 +43,7 @@ export function Messages({
     (c) => /^\+?[1-9]\d{6,14}$/.test((c.phone ?? '').replace(/[\s()-]/g, '')) && !c.unsubscribed,
   )
   const optedIn = reachable.filter((c) => c.whatsappOptIn)
+  const currentDraft = !selected?.bookingId || queue.some((r) => r.key === selected.key)
   const select = (r: Reminder) => {
     setSelected(r)
     setText(r.text)
@@ -51,6 +52,10 @@ export function Messages({
   function markSent(e: FormEvent) {
     e.preventDefault()
     if (!selected || !text.trim()) return
+    if (selected.bookingId && !queue.some((r) => r.key === selected.key)) {
+      setSelected(null)
+      return
+    }
     const at = new Date().toISOString(),
       id = crypto.randomUUID()
     setStore({
@@ -102,8 +107,7 @@ export function Messages({
           <span>{reachable.length} reachable contacts</span>
           <span>{optedIn.length} opted in for wash reminders</span>
           <p>
-            Manual WhatsApp preparation · Cloud API is test-only. Automatic customer campaigns are
-            not enabled.
+            Booking confirmations and reminders are prepared below. Cloud API tests go only to the verified test number; customer automation is off.
           </p>
         </div>
       )}
@@ -113,7 +117,7 @@ export function Messages({
           <span>Reminder rules</span>
         </summary>
         <p>
-          Wash reminders pause for customers with upcoming bookings.{' '}
+          Confirmations follow confirmed bookings; appointment reminders use the configured lead time. Pending and cancelled bookings do not trigger appointment messages. Wash reminders pause for customers with upcoming bookings.{' '}
           {live
             ? 'Current Swiss time. Wash reminders require an opt-in.'
             : `Demo: ${DEMO_DATE}, 08:00 Zurich.`}
@@ -149,7 +153,7 @@ export function Messages({
               ))}
             </tbody>
           </table>
-          {!queue.length && <p className="operation-caption">{live && !optedIn.length ? 'No eligible wash reminders: customer opt-in is required.' : 'All caught up.'}</p>}
+          {!queue.length && <p className="operation-caption">{live && !optedIn.length ? 'No booking messages due. Wash reminders require customer opt-in.' : 'All caught up.'}</p>}
         </div>
       )}
       {tab === 'Manual follow-up' && (
@@ -217,15 +221,16 @@ export function Messages({
             <textarea required value={text} onChange={(e) => setText(e.target.value)} />
           </label>
           <p className="muted">Mark as sent only after sending in WhatsApp.</p>
+          {!currentDraft && <p role="alert" className="form-error">This appointment changed. Close this draft and prepare the current message from the queue.</p>}
           <div className="action-row">
-            {whatsappLink(phone, text) ? (
+            {currentDraft && whatsappLink(phone, text) ? (
               <a className="btn" href={whatsappLink(phone, text)!} target="_blank" rel="noreferrer">
                 Open WhatsApp ↗
               </a>
             ) : (
               <span className="muted">Add a number to open WhatsApp.</span>
             )}
-            <button className="btn primary">Mark as sent</button>
+            <button className="btn primary" disabled={!currentDraft}>Mark as sent</button>
             <button type="button" className="btn" onClick={() => setSelected(null)}>
               Cancel
             </button>

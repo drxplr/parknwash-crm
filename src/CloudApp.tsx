@@ -4,6 +4,7 @@ import { PasswordSetup } from './PasswordSetup'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { TestMessageKind } from './whatsappTemplates'
 import type { WhatsAppTestApi, WhatsAppTestState } from './WhatsAppTest'
 import type { FormEvent } from 'react'
 import { ArrowRight, LogOut, RefreshCw } from 'lucide-react'
@@ -67,10 +68,10 @@ export default function CloudApp() {
   const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
     if (!client || !session || snapshot?.role !== 'admin') return undefined
     const endpoint = `whatsapp-test?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
-    const invoke = async (requestId?: string) => {
+    const invoke = async (requestId?: string, kind: TestMessageKind = 'connection') => {
       const result = await client.functions.invoke(endpoint, {
         method: requestId ? 'POST' : 'GET',
-        ...(requestId ? { body: { request_id: requestId } } : {}),
+        ...(requestId ? { body: { request_id: requestId, kind } } : {}),
       })
       if (result.error) {
         let message = 'WhatsApp test request interrupted. Refresh the log before trying again.'
@@ -78,6 +79,16 @@ export default function CloudApp() {
           try {
             const body = await result.error.context.json()
             if (typeof body.error === 'string') message = body.error
+            const hints: Record<string, string> = {
+              '190':
+                'Meta access token expired or invalid. Update WHATSAPP_ACCESS_TOKEN in Supabase secrets.',
+              '131030':
+                'Add and verify the configured test recipient in Meta → WhatsApp → API Setup → To.',
+              '132001':
+                'Meta cannot find this template in English (US). Check its name, language and approval.',
+            }
+            if (body.code != null)
+              message = (hints[String(body.code)] ?? message) + ` Code: ${body.code}`
           } catch {
             /* No provider response or secrets are exposed. */
           }
@@ -88,8 +99,8 @@ export default function CloudApp() {
     }
     return {
       load: () => invoke() as Promise<WhatsAppTestState>,
-      send: async (id) => {
-        await invoke(id)
+      send: async (id, kind) => {
+        await invoke(id, kind)
       },
     }
   }, [session?.user.id, snapshot?.workspace.id, snapshot?.role])
