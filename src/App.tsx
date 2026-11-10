@@ -581,25 +581,27 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 { name: 'Messages', icon: MessageSquare },
                 { name: 'Settings', icon: SlidersHorizontal },
               ] as const
-            ).map(({ name, icon: Icon }) => (
-              <button
-                key={name}
-                className={`nav-link ${page === name ? 'active' : ''}`}
-                aria-current={page === name ? 'page' : undefined}
-                onClick={() => navigate(name)}
-              >
-                <Icon size={17} />
-                {name}
-                {name === 'Bookings' && (
-                  <span className="nav-count">
-                    {
-                      store.bookings.filter((b) => b.date === today && b.status !== 'Cancelled')
-                        .length
-                    }
-                  </span>
-                )}
-              </button>
-            ))}
+            )
+              .filter(({ name }) => name !== 'Settings' || !cloud || cloud.role === 'admin')
+              .map(({ name, icon: Icon }) => (
+                <button
+                  key={name}
+                  className={`nav-link ${page === name ? 'active' : ''}`}
+                  aria-current={page === name ? 'page' : undefined}
+                  onClick={() => navigate(name)}
+                >
+                  <Icon size={17} />
+                  {name}
+                  {name === 'Bookings' && (
+                    <span className="nav-count">
+                      {
+                        store.bookings.filter((b) => b.date === today && b.status !== 'Cancelled')
+                          .length
+                      }
+                    </span>
+                  )}
+                </button>
+              ))}
             {myStaffId && (
               <button
                 className={`nav-link ${page === 'My washes' ? 'active' : ''}`}
@@ -724,11 +726,17 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           onChange={(e) => setStaffFilter(e.target.value)}
                         >
                           <option>All staff</option>
-                          {staff.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
+                          {staff
+                            .filter(
+                              (s) =>
+                                canAssignWash(s) ||
+                                store.bookings.some((b) => b.staffIds.includes(s.id)),
+                            )
+                            .map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
                         </Select>
                       </label>
                     )}
@@ -1442,7 +1450,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 }}
               />
             )}
-            {page === 'Settings' && (
+            {page === 'Settings' && (!cloud || cloud.role === 'admin') && (
               <Settings
                 key={resetKey}
                 store={store}
