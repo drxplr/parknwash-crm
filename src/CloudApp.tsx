@@ -14,6 +14,17 @@ import { createTabAuthStorage } from './authStorage'
 
 // Read only the flow label before the SDK consumes the URL fragment. Never log tokens.
 const entryFlow = new URLSearchParams(window.location.hash.slice(1)).get('type')
+// getSession() does not return URL-initialization errors. Capture only a safe
+// error classification before the SDK processes the callback, never its tokens.
+const callbackParams = new URLSearchParams(window.location.hash.slice(1))
+const callbackFailed = ['error', 'error_code', 'error_description'].some((key) =>
+  callbackParams.has(key),
+)
+const callbackError = callbackFailed
+  ? callbackParams.get('error_code') === 'otp_expired'
+    ? 'This sign-in link has expired or has already been used. Ask your administrator for a new invitation, then open the newest email to set your password.'
+    : 'This sign-in link could not be verified. Ask your administrator for a new invitation and open the newest email.'
+  : ''
 const config = import.meta.env
 const emailAuthEnabled = config.VITE_EMAIL_AUTH_ENABLED === 'true'
 // Only the public API key is allowed here. No customer records are persisted
@@ -41,6 +52,7 @@ export default function CloudApp() {
   const authAttempt = useRef(0),
     loginPending = useRef(false)
   const [password, setPassword] = useState('')
+  const [linkError, setLinkError] = useState(callbackError)
   const [passwordFlow, setPasswordFlow] = useState(
     entryFlow === 'invite' || entryFlow === 'recovery',
   )
@@ -185,6 +197,7 @@ export default function CloudApp() {
     const attempt = ++authAttempt.current
     signedOut.current = false
     setSigningIn(true)
+    setLinkError('')
     setError('')
     setSent(false)
     try {
@@ -484,6 +497,11 @@ export default function CloudApp() {
         {error && (
           <p role="alert" className="form-error">
             {error}
+          </p>
+        )}
+        {!session && linkError && (
+          <p role="alert" className="form-error">
+            {linkError}
           </p>
         )}
         <p className="auth-footnote">Access is limited to authorized team members.</p>
