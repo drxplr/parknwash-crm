@@ -1,3 +1,4 @@
+import { PasswordSetup } from './PasswordSetup'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
@@ -9,6 +10,8 @@ import type { Snapshot } from './cloudRepository'
 import type { Store } from './model'
 import { createTabAuthStorage } from './authStorage'
 
+// Read only the flow label before the SDK consumes the URL fragment. Never log tokens.
+const entryFlow = new URLSearchParams(window.location.hash.slice(1)).get('type')
 const config = import.meta.env
 const emailAuthEnabled = config.VITE_EMAIL_AUTH_ENABLED === 'true'
 // Only the public API key is allowed here. No customer records are persisted
@@ -33,6 +36,9 @@ export default function CloudApp() {
     [email, setEmail] = useState(''),
     [sent, setSent] = useState(false)
   const [password, setPassword] = useState('')
+  const [passwordFlow, setPasswordFlow] = useState(
+    entryFlow === 'invite' || entryFlow === 'recovery',
+  )
   const [method, setMethod] = useState<'password' | 'link'>('password')
   const [updatesAvailable, setUpdatesAvailable] = useState(false)
   const sequence = useRef(0),
@@ -56,6 +62,9 @@ export default function CloudApp() {
         setLoading(false)
         setUpdatesAvailable(false)
       }
+      // This user-editable marker only controls onboarding UI, never authorization.
+      if (next?.user.invited_at && next.user.user_metadata?.crm_password_set !== true)
+        setPasswordFlow(true)
       activeUser.current = id
       setSession(next)
       setReady(true)
@@ -63,7 +72,8 @@ export default function CloudApp() {
     const initialSequence = sequence.current
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange((_event, next) => {
+    } = client.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordFlow(true)
       acceptSession(next)
     })
     void client.auth.getSession().then(({ data, error }) => {
@@ -186,6 +196,7 @@ export default function CloudApp() {
     setLoading(false)
     setUpdatesAvailable(false)
     setPassword('')
+    setPasswordFlow(false)
     setError('')
     try {
       const result = await client?.auth.signOut({ scope: 'local' })
@@ -235,6 +246,21 @@ export default function CloudApp() {
     setSnapshot(next)
     return snapshotToStore(next)
   }
+  if (session && client && passwordFlow)
+    return (
+      <PasswordSetup
+        email={session.user.email ?? ''}
+        onSave={async (newPassword) => {
+          const result = await client.auth.updateUser({
+            password: newPassword,
+            data: { crm_password_set: true },
+          })
+          if (result.error) throw result.error
+          setPasswordFlow(false)
+        }}
+        onSignOut={() => void signOut()}
+      />
+    )
   if (snapshot && session && !loading)
     return (
       <>
