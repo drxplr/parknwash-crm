@@ -1,3 +1,5 @@
+import { WasherWorkspace } from './WasherWorkspace'
+import { canAssignWash } from './teamRoles'
 import { RegionBadge } from './RegionBadge'
 import { CustomerProfile } from './CustomerProfile'
 import { ActivityHistory } from './ActivityHistory'
@@ -55,7 +57,7 @@ import {
   swissToday,
 } from './model'
 import type { Activity, Booking, Customer, Region, Status, Store, Vehicle } from './model'
-type Page = 'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings'
+type Page = 'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings' | 'My washes'
 type Detail = { kind: 'booking' | 'customer' | 'vehicle'; id: string } | null
 const initials = (name: string) =>
   name
@@ -190,6 +192,8 @@ function Dialog({
   )
 }
 export interface CloudMode {
+  washerStaffId?: string
+  washStatus: (id: string, status: 'In progress' | 'Completed') => Promise<Store>
   initial: Store
   role: 'admin' | 'editor' | 'viewer'
   label: string
@@ -294,6 +298,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     return () => window.removeEventListener('keydown', key)
   }, [])
   const { staff } = store.settings
+  const myStaffId = cloud ? cloud.washerStaffId : staff.find((s) => canAssignWash(s))?.id
   const customer = (id: string) => store.customers.find((c) => c.id === id)!
   const vehicle = (id: string) => store.vehicles.find((v) => v.id === id)!
   const owner = (b: Booking) => customer(vehicle(b.vehicleId).customerId)
@@ -595,6 +600,16 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 )}
               </button>
             ))}
+            {myStaffId && (
+              <button
+                className={`nav-link ${page === 'My washes' ? 'active' : ''}`}
+                aria-current={page === 'My washes' ? 'page' : undefined}
+                onClick={() => navigate('My washes')}
+              >
+                <CarFront size={17} />
+                My washes
+              </button>
+            )}
           </nav>
           <div className="sidebar-section locations-label">Regions</div>
           <div className="location-list">
@@ -686,7 +701,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     : undefined
               }
               filters={
-                page !== 'Settings' ? (
+                page !== 'Settings' && page !== 'My washes' ? (
                   <>
                     <label className="select-wrap">
                       <MapPin size={14} />
@@ -1038,6 +1053,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     bookings={visibleBookings}
                     team={staff.filter(
                       (s) =>
+                        (canAssignWash(s) ||
+                          visibleBookings.some((b) => b.staffIds.includes(s.id))) &&
                         (region === 'All regions' || s.region === region) &&
                         (staffFilter === 'All staff' || s.id === staffFilter),
                     )}
@@ -1398,6 +1415,31 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 setStore={setStore}
                 region={region}
                 openCustomer={openCustomer}
+              />
+            )}
+            {page === 'My washes' && myStaffId && (
+              <WasherWorkspace
+                embedded
+                store={store}
+                staffId={myStaffId}
+                onStatus={async (id, status) => {
+                  if (cloud) {
+                    setLocalStore(await cloud.washStatus(id, status))
+                    return
+                  }
+                  setStore((s) => ({
+                    ...s,
+                    bookings: s.bookings.map((b) => (b.id === id ? { ...b, status } : b)),
+                    activities: [
+                      record(
+                        s.bookings.find((b) => b.id === id)!,
+                        status === 'Completed' ? 'Wash completed' : 'Wash started',
+                        status,
+                      ),
+                      ...s.activities,
+                    ],
+                  }))
+                }}
               />
             )}
             {page === 'Settings' && (
@@ -2023,7 +2065,7 @@ function BookingDetail({
           <fieldset className="staff-picker">
             <legend>Assigned team</legend>
             {staff
-              .filter((s) => s.region === c.region)
+              .filter((s) => s.region === c.region && canAssignWash(s))
               .map((s) => (
                 <label key={s.id}>
                   <input
@@ -2195,7 +2237,11 @@ function NewBooking({
     ),
     [date, setDate] = useState(initial?.date ?? today),
     [time, setTime] = useState(initial?.time ?? '09:00'),
-    [assigned, setAssigned] = useState<string[]>(initial?.staffId ? [initial.staffId] : []),
+    [assigned, setAssigned] = useState<string[]>(
+      initial?.staffId && staff.some((s) => s.id === initial.staffId && canAssignWash(s))
+        ? [initial.staffId]
+        : [],
+    ),
     [address, setAddress] = useState(initialCustomer.address),
     [notes, setNotes] = useState(''),
     [error, setError] = useState(''),
@@ -2227,6 +2273,17 @@ function NewBooking({
     }
     if (live && store.vehicles.find((v) => v.id === vehicleId)?.notes.startsWith('[Size review]')) {
       setError('Confirm the vehicle size in its profile before booking.')
+      return
+    }
+    if (
+      assigned.some(
+        (id) =>
+          !staff.some(
+            (member) => member.id === id && canAssignWash(member) && member.region === c.region,
+          ),
+      )
+    ) {
+      setError('Choose active team members with the Washer role.')
       return
     }
     const mins = Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
@@ -2343,7 +2400,7 @@ function NewBooking({
         </label>
         <fieldset className="staff-picker full">
           <legend>Assign team · {c.region}</legend>
-          {!staff.some((member) => member.region === c.region) && (
+          {!staff.some((member) => member.region === c.region && canAssignWash(member)) && (
             <div className="booking-team-setup">
               <strong>No team members in {c.region} yet</strong>
               {canAddStaff && c.region !== 'Unassigned' ? (
@@ -2367,6 +2424,8 @@ function NewBooking({
                         id,
                         name,
                         region: c.region as Region,
+                        roles: ['washer'],
+                        active: true,
                         initials: name
                           .split(/\s+/)
                           .slice(0, 2)
@@ -2386,7 +2445,7 @@ function NewBooking({
             </div>
           )}
           {staff
-            .filter((s) => s.region === c.region)
+            .filter((s) => s.region === c.region && canAssignWash(s))
             .map((s) => (
               <label key={s.id}>
                 <input

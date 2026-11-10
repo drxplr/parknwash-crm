@@ -1,3 +1,4 @@
+import { WasherWorkspace } from './WasherWorkspace'
 import { authErrorMessage, retryConnectionOnce, retryPasswordSignIn } from './connectionRecovery'
 import { PasswordSetup } from './PasswordSetup'
 import { createClient } from '@supabase/supabase-js'
@@ -277,6 +278,24 @@ export default function CloudApp() {
     setSnapshot(next)
     return snapshotToStore(next)
   }
+  async function washStatus(id: string, status: 'In progress' | 'Completed'): Promise<Store> {
+    const base = snapshotRef.current
+    if (!client || !session || !base || activeUser.current !== session.user.id)
+      throw new Error('Sign in again.')
+    const seq = sequence.current
+    const { error } = await client.rpc('crm_wash_status', {
+      ws: base.workspace.id,
+      job: id,
+      next_status: status,
+      expected_revision: base.workspace.revision,
+    })
+    if (error) throw error
+    const next = await loadSnapshot(client, base.workspace.id)
+    if (seq !== sequence.current) throw new Error('Session changed. Sign in again.')
+    snapshotRef.current = next
+    setSnapshot(next)
+    return snapshotToStore(next)
+  }
   if (session && client && passwordFlow)
     return (
       <PasswordSetup
@@ -291,6 +310,55 @@ export default function CloudApp() {
         }}
         onSignOut={() => void signOut()}
       />
+    )
+  if (
+    snapshot &&
+    session &&
+    !workspaceLoading &&
+    snapshot.can_manage === false &&
+    snapshot.is_washer &&
+    snapshot.staff_id
+  )
+    return (
+      <WasherWorkspace
+        store={snapshotToStore(snapshot)}
+        staffId={snapshot.staff_id}
+        onStatus={async (id, status) => {
+          await washStatus(id, status)
+        }}
+        onReload={load}
+        onSignOut={() => void signOut()}
+      />
+    )
+  if (
+    snapshot &&
+    session &&
+    !workspaceLoading &&
+    snapshot.can_manage === false &&
+    !snapshot.is_washer &&
+    !snapshot.staff.some(
+      (s) =>
+        s.id === snapshot.staff_id &&
+        s.active === true &&
+        Array.isArray(s.roles) &&
+        s.roles.includes('manager'),
+    )
+  )
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <h1>Team roles need setup</h1>
+          <p>Ask an administrator to link your account and confirm your active team roles.</p>
+          <div className="auth-actions">
+            <button className="btn" onClick={() => void load()}>
+              Reload access
+            </button>
+            <button className="btn" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
+        </section>
+      </main>
     )
   if (snapshot && session && !workspaceLoading)
     return (
@@ -313,7 +381,9 @@ export default function CloudApp() {
           key={`${session.user.id}-${version}`}
           cloud={{
             initial: snapshotToStore(snapshot),
-            role: snapshot.role,
+            role: snapshot.can_manage === false ? 'viewer' : snapshot.role,
+            washerStaffId: snapshot.is_washer ? (snapshot.staff_id ?? undefined) : undefined,
+            washStatus,
             label: session.user.email?.split('@')[0] ?? 'Team',
             commit,
             reload: load,

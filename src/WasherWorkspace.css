@@ -1,0 +1,90 @@
+.washer-shell.app-shell {
+  display: block;
+  min-height: 100dvh;
+  background: #f5f5f5;
+}
+.washer-workspace {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.washer-shell > .washer-workspace {
+  padding: 24px;
+}
+.washer-jobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.washer-job {
+  padding: 20px;
+  border-radius: 18px;
+  background: white;
+}
+.washer-job-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #737373;
+  margin-bottom: 14px;
+}
+.washer-job-top > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #171717;
+}
+.washer-job h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.washer-job h2 small {
+  font-size: 10px;
+  background: #f0f0f0;
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+.washer-job p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #737373;
+  margin: 5px 0;
+}
+.washer-job .washer-address {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  margin-top: 14px;
+  color: #404040;
+}
+.washer-address svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.washer-job-note {
+  white-space: pre-wrap;
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: 10px;
+}
+.washer-job .btn {
+  margin-top: 14px;
+  min-height: 40px;
+}
+.washer-job > small,
+.washer-empty {
+  font-size: 12px;
+  color: #737373;
+}
+@media (max-width: 600px) {
+  .washer-shell > .washer-workspace {
+    padding: 16px;
+  }
+  .washer-job {
+    padding: 16px;
+  }
+}

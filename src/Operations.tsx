@@ -1,3 +1,5 @@
+import { teamRoleLabels, teamRolesLabel } from './teamRoles'
+import type { Staff, TeamRole } from './model'
 import { websitePackages, websiteServices } from './websiteCatalog'
 import { Info, Package, Users, MapPin, Bell, Plus, Check } from 'lucide-react'
 import { Select } from './Select'
@@ -372,11 +374,17 @@ export function Settings({
   const [section, setSection] = useState('services')
   const sections = [
     { id: 'services', label: 'Services & pricing', icon: Package },
-    { id: 'team', label: 'Team', icon: Users },
+    { id: 'team', label: 'Team members', icon: Users },
     { id: 'regions', label: 'Regions', icon: MapPin },
     { id: 'reminders', label: 'Reminders', icon: Bell },
   ]
   const dirty = JSON.stringify(draft) !== JSON.stringify(store.settings)
+  const [teamError, setTeamError] = useState('')
+  function updateMember(index: number, patch: Partial<Staff>) {
+    setSaved(false)
+    setTeamError('')
+    setDraft({ ...draft, staff: draft.staff.map((m, i) => (i === index ? { ...m, ...patch } : m)) })
+  }
   const [priceRegion, setPriceRegion] = useState<'Ticino' | 'Geneva'>('Ticino')
   const variants = ['S', 'M', 'L+'] as const
   const keys = ['Compact', 'Sedan', 'SUV'] as const
@@ -412,6 +420,18 @@ export function Settings({
         onChange={() => setSaved(false)}
         onSubmit={(e) => {
           e.preventDefault()
+          if (
+            draft.staff.some(
+              (m) =>
+                m.roles?.length === 0 || (m.roles?.includes('washer') && m.region === 'Unassigned'),
+            )
+          ) {
+            setSection('team')
+            setTeamError(
+              'Choose at least one role per member and a service region for every washer.',
+            )
+            return
+          }
           onSave(draft)
           setSaved(true)
         }}
@@ -707,51 +727,106 @@ export function Settings({
                   <p>Then assign them to washes in their region.</p>
                 </div>
               )}
+              {teamError && (
+                <p className="form-error" role="alert">
+                  {teamError}
+                </p>
+              )}
               {draft.staff.map((s, i) => (
-                <div className="settings-staff-row" key={s.id}>
-                  <span className="avatar">
-                    {s.name
-                      .trim()
-                      .split(/\s+/)
-                      .slice(0, 2)
-                      .map((n) => n[0])
-                      .join('') || <Users size={16} />}
-                  </span>
-                  <label className="field">
-                    Name
-                    <input
-                      aria-label={`Staff ${i + 1} name`}
-                      required
-                      value={s.name}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          staff: draft.staff.map((x, j) =>
-                            i === j ? { ...x, name: e.target.value } : x,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    Region
-                    <Select
-                      aria-label={`Staff ${i + 1} region`}
-                      value={s.region}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          staff: draft.staff.map((x, j) =>
-                            i === j ? { ...x, region: e.target.value as Region } : x,
-                          ),
-                        })
-                      }
-                    >
-                      <option>Geneva</option>
-                      <option>Ticino</option>
-                    </Select>
-                  </label>
-                </div>
+                <article className="team-member-card" key={s.id}>
+                  <div className="settings-staff-row">
+                    <span className="avatar">
+                      {s.name
+                        .trim()
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((n) => n[0])
+                        .join('') || <Users size={16} />}
+                    </span>
+                    <label className="field">
+                      Name
+                      <input
+                        required
+                        aria-label={`Staff ${i + 1} name`}
+                        value={s.name}
+                        onChange={(e) => updateMember(i, { name: e.target.value })}
+                      />
+                    </label>
+                    <label className="field">
+                      Service region
+                      <Select
+                        aria-label={`Staff ${i + 1} region`}
+                        value={s.region}
+                        onChange={(e) =>
+                          updateMember(i, { region: e.target.value as Staff['region'] })
+                        }
+                      >
+                        <option value="Unassigned">Not required</option>
+                        <option>Geneva</option>
+                        <option>Ticino</option>
+                      </Select>
+                    </label>
+                  </div>
+                  <div className="team-member-detail">
+                    <div className="team-role-summary">
+                      {teamRolesLabel(s)}
+                      {s.active === false && <span>Inactive</span>}
+                    </div>
+                    <fieldset className="team-role-options">
+                      <legend>Roles</legend>
+                      {(['manager', 'washer'] as TeamRole[]).map((role) => (
+                        <label key={role}>
+                          <input
+                            type="checkbox"
+                            aria-label={`${s.name || 'New member'}: ${teamRoleLabels[role]}`}
+                            checked={s.roles?.includes(role) ?? false}
+                            onChange={(e) =>
+                              updateMember(i, {
+                                roles: e.target.checked
+                                  ? [...(s.roles ?? []), role]
+                                  : (s.roles ?? []).filter((r) => r !== role),
+                              })
+                            }
+                          />
+                          {teamRoleLabels[role]}
+                        </label>
+                      ))}
+                    </fieldset>
+                    <div className="team-member-account">
+                      <label className="field">
+                        Login account
+                        <Select
+                          aria-label={`${s.name || 'New member'} login account`}
+                          value={s.userId ?? ''}
+                          onChange={(e) => updateMember(i, { userId: e.target.value || null })}
+                        >
+                          <option value="">No login account</option>
+                          {store.teamAccounts?.map((a) => (
+                            <option
+                              key={a.userId}
+                              value={a.userId}
+                              disabled={draft.staff.some(
+                                (m) => m.id !== s.id && m.userId === a.userId,
+                              )}
+                            >
+                              {a.email}
+                            </option>
+                          ))}
+                        </Select>
+                        {store.teamAccounts?.find((a) => a.userId === s.userId)?.accessRole ===
+                          'admin' && <small>Administrator access is preserved</small>}
+                      </label>
+                      <label className="team-active">
+                        <input
+                          type="checkbox"
+                          checked={s.active !== false}
+                          onChange={(e) => updateMember(i, { active: e.target.checked })}
+                        />
+                        Active
+                      </label>
+                    </div>
+                  </div>
+                </article>
               ))}
               <button
                 type="button"
@@ -761,7 +836,15 @@ export function Settings({
                     ...draft,
                     staff: [
                       ...draft.staff,
-                      { id: crypto.randomUUID(), name: '', initials: '', region: 'Geneva' },
+                      {
+                        id: crypto.randomUUID(),
+                        name: '',
+                        initials: '',
+                        region: 'Unassigned',
+                        roles: [],
+                        active: true,
+                        userId: null,
+                      },
                     ],
                   })
                 }

@@ -350,3 +350,76 @@
   color: #0057dc;
   box-shadow: none;
 }
+.team-member-card {
+  background: #f7f7f7;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.team-member-card .settings-staff-row {
+  padding-bottom: 10px;
+}
+.team-member-detail {
+  padding: 0 14px 14px 62px;
+  display: grid;
+  gap: 12px;
+}
+.team-role-summary {
+  font-size: 11px;
+  color: #525252;
+  display: flex;
+  gap: 10px;
+}
+.team-role-summary > span {
+  color: #986100;
+}
+.team-role-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.team-role-options legend {
+  font-size: 11px;
+  color: #737373;
+  margin-bottom: 8px;
+}
+.team-role-options label,
+.team-active {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #171717;
+  cursor: pointer;
+}
+.team-role-options input,
+.team-active input {
+  accent-color: #0066ff;
+  width: 16px;
+  height: 16px;
+}
+.team-member-account {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.team-member-account .field {
+  flex: 1;
+  min-width: 0;
+}
+.team-member-account .select-trigger {
+  background: white;
+}
+.team-active {
+  padding-top: 18px;
+}
+@media (max-width: 600px) {
+  .team-member-detail {
+    padding: 0 12px 14px;
+  }
+  .team-member-account {
+    gap: 10px;
+  }
+}

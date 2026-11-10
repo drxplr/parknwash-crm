@@ -6,6 +6,10 @@ type Row = Record<string, unknown>
 export interface Snapshot {
   workspace: Row & { id: string; revision: number }
   role: 'admin' | 'editor' | 'viewer'
+  can_manage?: boolean
+  is_washer?: boolean
+  staff_id?: string | null
+  team_accounts?: { userId: string; email: string; accessRole?: 'admin' | 'editor' | 'viewer' }[]
   regions: Row[]
   staff: Row[]
   services: Row[]
@@ -47,6 +51,7 @@ const localParts = (iso: string) => {
 export function snapshotToStore(s: Snapshot): Store {
   const region = (id: unknown) => s.regions.find((r) => r.id === id)?.name as Region | undefined
   return {
+    teamAccounts: s.team_accounts ?? [],
     customers: s.customers.map((c) => {
       const contacts = s.contacts.filter((r) => r.customer_id === c.id)
       const addresses = s.addresses.filter((r) => r.customer_id === c.id)
@@ -128,18 +133,21 @@ export function snapshotToStore(s: Snapshot): Store {
           return [name, { enabled: r?.enabled === true, notes: r ? str(r, 'coverage') : '' }]
         }),
       ) as Store['settings']['regions'],
-      staff: s.staff
-        .filter((r) => r.active === true)
-        .map((r) => ({
-          id: str(r, 'id'),
-          name: str(r, 'name'),
-          initials: str(r, 'name')
-            .split(' ')
-            .map((x) => x[0])
-            .slice(0, 2)
-            .join(''),
-          region: region(r.region_id)!,
-        })),
+      staff: s.staff.map((r) => ({
+        id: str(r, 'id'),
+        name: str(r, 'name'),
+        initials: str(r, 'name')
+          .split(' ')
+          .map((x) => x[0])
+          .slice(0, 2)
+          .join(''),
+        region: region(r.region_id) ?? 'Unassigned',
+        active: r.active === true,
+        userId: r.user_id ? str(r, 'user_id') : null,
+        roles: Array.isArray(r.roles)
+          ? r.roles.filter((x): x is 'manager' | 'washer' => x === 'manager' || x === 'washer')
+          : null,
+      })),
       services: s.services
         .filter((r) => r.active === true)
         .map((r) => {
@@ -276,7 +284,9 @@ export function storeChanges(base: Snapshot, before: Store, after: Store): Chang
         id: staff.id,
         name: staff.name,
         region_id: regionId(staff.region),
-        active: true,
+        active: staff.active !== false,
+        roles: staff.roles ?? null,
+        user_id: staff.userId ?? null,
       })
     for (const svc of after.settings.services) {
       const id = svc.id ?? base.services.find((r) => r.name === svc.name)?.id
@@ -302,8 +312,11 @@ export function storeChanges(base: Snapshot, before: Store, after: Store): Chang
       throw new Error('Set a valid region and service before booking.')
     const start = swissInstant(b.date, b.time)
     // Remove old assignments first: a region change must not retain the old team.
+    const regionChanged =
+      !!old && base.bookings.find((row) => row.id === old.id)?.region_id !== regionId(c.region)
     for (const id of old?.staffIds ?? [])
-      put('crm_booking_staff', { booking_id: b.id, staff_id: id }, 'delete')
+      if (regionChanged || !b.staffIds.includes(id))
+        put('crm_booking_staff', { booking_id: b.id, staff_id: id }, 'delete')
     put('crm_bookings', {
       id: b.id,
       vehicle_id: b.vehicleId,
@@ -318,7 +331,9 @@ export function storeChanges(base: Snapshot, before: Store, after: Store): Chang
       address: b.address,
       notes: b.notes,
     })
-    for (const id of b.staffIds) put('crm_booking_staff', { booking_id: b.id, staff_id: id })
+    for (const id of b.staffIds)
+      if (!old?.staffIds.includes(id) || regionChanged)
+        put('crm_booking_staff', { booking_id: b.id, staff_id: id })
   }
   for (const m of after.sentMessages)
     if (!before.sentMessages.some((x) => x.id === m.id))

@@ -28,11 +28,15 @@ export interface Vehicle {
   size: string
   notes: string
 }
+export type TeamRole = 'manager' | 'washer'
 export interface Staff {
   id: string
   name: string
   initials: string
-  region: Region
+  region: Region | 'Unassigned'
+  roles?: TeamRole[] | null
+  active?: boolean
+  userId?: string | null
 }
 export interface Booking {
   id: string
@@ -61,6 +65,7 @@ export interface Activity {
   author: string
 }
 export interface Store {
+  teamAccounts?: { userId: string; email: string; accessRole?: 'admin' | 'editor' | 'viewer' }[]
   customers: Customer[]
   vehicles: Vehicle[]
   bookings: Booking[]
@@ -100,10 +105,38 @@ export interface Reminder {
 }
 export const DEMO_DATE = '2026-11-09'
 export const staff: Staff[] = [
-  { id: 's1', name: 'Alex Laurent', initials: 'AL', region: 'Geneva' },
-  { id: 's2', name: 'Camille Roy', initials: 'CR', region: 'Geneva' },
-  { id: 's3', name: 'Luca Riva', initials: 'LR', region: 'Ticino' },
-  { id: 's4', name: 'Mia Costa', initials: 'MC', region: 'Ticino' },
+  {
+    id: 's1',
+    name: 'Alex Laurent',
+    initials: 'AL',
+    region: 'Geneva',
+    roles: ['manager', 'washer'],
+    active: true,
+  },
+  {
+    id: 's2',
+    name: 'Camille Roy',
+    initials: 'CR',
+    region: 'Geneva',
+    roles: ['washer'],
+    active: true,
+  },
+  {
+    id: 's3',
+    name: 'Luca Riva',
+    initials: 'LR',
+    region: 'Ticino',
+    roles: ['manager'],
+    active: true,
+  },
+  {
+    id: 's4',
+    name: 'Mia Costa',
+    initials: 'MC',
+    region: 'Ticino',
+    roles: ['washer'],
+    active: true,
+  },
 ]
 export const services: Service[] = [
   {
@@ -609,7 +642,16 @@ export function loadStore(): Store {
         return {
           ...data,
           customers: assignCustomerColors(data.customers as Customer[]),
-          settings: data.settings ?? structuredClone(defaultSettings),
+          settings: data.settings
+            ? {
+                ...data.settings,
+                staff: data.settings.staff.map((s: Staff) => ({
+                  ...s,
+                  roles: s.roles ?? ['manager', 'washer'],
+                  active: s.active ?? true,
+                })),
+              }
+            : structuredClone(defaultSettings),
           sentMessages: data.sentMessages ?? [],
         }
     }
@@ -633,7 +675,9 @@ export function createDemoStore(): Store {
       const size = v.size === 'Compact' ? 'S' : v.size === 'SUV' ? 'L+' : 'M'
       const pkg = slot % 3 === 0 ? 'Complete Care' : 'Essential Care'
       const svc = store.settings.services.find((s) => s.name === `${pkg} · ${c.region} · ${size}`)!
-      const members = store.settings.staff.filter((s) => s.region === c.region)
+      const members = store.settings.staff.filter(
+        (s) => s.region === c.region && s.active !== false && s.roles?.includes('washer'),
+      )
       const id = `PNW-${1100 + day * 4 + slot}`
       store.bookings.push({
         id,

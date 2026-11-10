@@ -1,3 +1,4 @@
+import { canAssignWash } from './teamRoles'
 import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
@@ -95,7 +96,11 @@ export function ScheduleCalendar({
                     ? onDay(col.date)
                     : onCreate({ date: col.date, time: '09:00', staffId: col.staffId })
                 }
-                disabled={range === 'Day' && !canCreate}
+                disabled={
+                  range === 'Day' &&
+                  (!canCreate ||
+                    (!!col.staffId && !team.some((s) => s.id === col.staffId && canAssignWash(s))))
+                }
                 aria-label={
                   range === 'Week'
                     ? `Open ${dayLabel(col.date)} staff schedule`
@@ -228,6 +233,8 @@ function FreeTimes({
         .filter((s) => !staffId || s.id === staffId)
         .some(
           (s) =>
+            s.region !== 'Unassigned' &&
+            canAssignWash(s) &&
             store.settings.regions[s.region].enabled &&
             !store.bookings.some((b) =>
               overlaps(
@@ -274,6 +281,8 @@ function FreeTimes({
             const member = team.find(
               (s) =>
                 (!staffId || s.id === staffId) &&
+                s.region !== 'Unassigned' &&
+                canAssignWash(s) &&
                 store.settings.regions[s.region].enabled &&
                 !store.bookings.some((b) =>
                   overlaps(
