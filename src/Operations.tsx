@@ -1,7 +1,9 @@
 import { teamRoleLabels, teamRolesLabel } from './teamRoles'
+import { WhatsAppTest } from './WhatsAppTest'
+import type { WhatsAppTestApi } from './WhatsAppTest'
 import type { Staff, TeamRole } from './model'
 import { websitePackages, websiteServices } from './websiteCatalog'
-import { Info, Package, Users, MapPin, Bell, Plus, Check } from 'lucide-react'
+import { Info, Package, Users, MapPin, Bell, Plus, Check, MessageSquare } from 'lucide-react'
 import { Select } from './Select'
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -364,9 +366,11 @@ export function CustomerDetails({
 export function Settings({
   store,
   onSave,
+  whatsapp,
 }: {
   store: Store
   onSave: (s: Store['settings']) => void
+  whatsapp?: WhatsAppTestApi
 }) {
   const [draft, setDraft] = useState(structuredClone(store.settings)),
     [saved, setSaved] = useState(false)
@@ -377,6 +381,7 @@ export function Settings({
     { id: 'team', label: 'Team members', icon: Users },
     { id: 'regions', label: 'Regions', icon: MapPin },
     { id: 'reminders', label: 'Reminders', icon: Bell },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
   ]
   const dirty = JSON.stringify(draft) !== JSON.stringify(store.settings)
   const [teamError, setTeamError] = useState('')
@@ -405,7 +410,7 @@ export function Settings({
             key={id}
             aria-current={section === id ? 'page' : undefined}
             onClick={() => {
-              if (formRef.current?.reportValidity()) setSection(id)
+              if (!formRef.current || formRef.current.reportValidity()) setSection(id)
             }}
           >
             <Icon size={17} />
@@ -414,7 +419,7 @@ export function Settings({
           </button>
         ))}
       </nav>
-      <form
+      {section === 'whatsapp' ? <WhatsAppTest api={whatsapp} /> : <form
         ref={formRef}
         className="operations settings-content"
         onChange={() => setSaved(false)}
@@ -915,7 +920,7 @@ export function Settings({
             Save changes
           </button>
         </footer>
-      </form>
+      </form>}
     </div>
   )
 }

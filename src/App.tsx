@@ -12,6 +12,7 @@ import { startOfWeek, calendarRangeLabel } from './calendarModel'
 import { Select } from './Select'
 import { customerColorStyle } from './customerColors'
 import { Messages, Settings } from './Operations'
+import type { WhatsAppTestApi } from './WhatsAppTest'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -192,6 +193,7 @@ function Dialog({
   )
 }
 export interface CloudMode {
+  whatsapp?: WhatsAppTestApi
   washerStaffId?: string
   washStatus: (id: string, status: 'In progress' | 'Completed') => Promise<Store>
   initial: Store
@@ -1454,6 +1456,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <Settings
                 key={resetKey}
                 store={store}
+                whatsapp={cloud?.whatsapp}
                 onSave={(settings) => {
                   setStore((s) => ({ ...s, settings }))
                   setToast('Settings saved')

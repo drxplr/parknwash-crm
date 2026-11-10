@@ -3,7 +3,8 @@ import { authErrorMessage, retryConnectionOnce, retryPasswordSignIn } from './co
 import { PasswordSetup } from './PasswordSetup'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { WhatsAppTestApi, WhatsAppTestState } from './WhatsAppTest'
 import type { FormEvent } from 'react'
 import { ArrowRight, LogOut, RefreshCw } from 'lucide-react'
 import App from './App'
@@ -63,6 +64,28 @@ export default function CloudApp() {
   const activeUser = useRef<string | null>(null),
     signedOut = useRef(false)
   snapshotRef.current = snapshot
+  const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
+    if (!client || !session || snapshot?.role !== 'admin') return undefined
+    const endpoint = `whatsapp-test?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
+    const invoke = async (requestId?: string) => {
+      const result = await client.functions.invoke(endpoint, {
+        method: requestId ? 'POST' : 'GET',
+        ...(requestId ? { body: { request_id: requestId } } : {}),
+      })
+      if (result.error) {
+        let message = 'WhatsApp test request interrupted. Refresh the log before trying again.'
+        if (result.error.context instanceof Response) {
+          try {
+            const body = await result.error.context.json()
+            if (typeof body.error === 'string') message = body.error
+          } catch { /* No provider response or secrets are exposed. */ }
+        }
+        throw new Error(message)
+      }
+      return result.data
+    }
+    return { load: () => invoke() as Promise<WhatsAppTestState>, send: async (id) => { await invoke(id) } }
+  }, [session?.user.id, snapshot?.workspace.id, snapshot?.role])
   useEffect(() => {
     if (!client) {
       setReady(true)
@@ -393,6 +416,7 @@ export default function CloudApp() {
         <App
           key={`${session.user.id}-${version}`}
           cloud={{
+            whatsapp,
             initial: snapshotToStore(snapshot),
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,
             washerStaffId: snapshot.is_washer ? (snapshot.staff_id ?? undefined) : undefined,

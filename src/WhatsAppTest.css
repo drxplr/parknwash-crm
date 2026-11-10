@@ -1,0 +1,150 @@
+.wa-test-badge {
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 400;
+  color: #0066ff;
+  background: #edf3ff;
+  padding: 4px 8px;
+  border-radius: 8px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.wa-test-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 18px;
+}
+.wa-test-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  color: #171717;
+  flex: none;
+}
+.wa-test-summary strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.wa-test-summary p {
+  font-size: 12px;
+  color: #737373;
+  margin: 5px 0 0;
+}
+.wa-test-summary .btn {
+  margin-left: auto;
+}
+.wa-setup {
+  padding: 18px 0;
+  font-size: 13px;
+}
+.wa-setup p,
+.wa-muted {
+  color: #737373;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.wa-setup ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.wa-setup code {
+  display: block;
+  background: #f5f5f5;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.wa-log-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28px;
+  gap: 12px;
+}
+.wa-log-heading h3 {
+  font-size: 14px;
+  font-weight: 500;
+}
+.wa-log {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+.wa-log article {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f5f5f5;
+}
+.wa-log article > div {
+  flex: 1;
+  min-width: 140px;
+}
+.wa-log strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.wa-log time {
+  display: block;
+  font-size: 11px;
+  color: #737373;
+  margin-top: 4px;
+}
+.wa-log small {
+  font-size: 11px;
+  color: #737373;
+}
+.wa-status {
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: #525252;
+  background: #e5e5e5;
+}
+.wa-delivered,
+.wa-read {
+  color: #166534;
+  background: #e5f4e9;
+}
+.wa-failed {
+  color: #991b1b;
+  background: #fee2e2;
+}
+.wa-unknown {
+  color: #854d0e;
+  background: #fef3c7;
+}
+.wa-notice {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.wa-empty {
+  padding: 24px 0;
+  font-size: 13px;
+  color: #737373;
+}
+@media (max-width: 600px) {
+  .wa-test-summary {
+    padding: 16px;
+  }
+  .wa-test-summary .btn {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+  }
+}
