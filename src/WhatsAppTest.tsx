@@ -176,7 +176,8 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
                       <p>
                         Meta → WhatsApp Manager → Message templates → Create template. Choose
                         Utility, English (US), positional variables. Use only a body; no header,
-                        footer or buttons.
+                        footer or buttons. Paste the entire body, including the greeting and closing
+                        sentence. Do not place variables at the start or end.
                       </p>
                       <label>
                         Template name<code>{t.name}</code>
