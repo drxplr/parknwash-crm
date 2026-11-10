@@ -78,13 +78,20 @@ export default function CloudApp() {
           try {
             const body = await result.error.context.json()
             if (typeof body.error === 'string') message = body.error
-          } catch { /* No provider response or secrets are exposed. */ }
+          } catch {
+            /* No provider response or secrets are exposed. */
+          }
         }
         throw new Error(message)
       }
       return result.data
     }
-    return { load: () => invoke() as Promise<WhatsAppTestState>, send: async (id) => { await invoke(id) } }
+    return {
+      load: () => invoke() as Promise<WhatsAppTestState>,
+      send: async (id) => {
+        await invoke(id)
+      },
+    }
   }, [session?.user.id, snapshot?.workspace.id, snapshot?.role])
   useEffect(() => {
     if (!client) {
@@ -529,9 +536,6 @@ export default function CloudApp() {
           </p>
         )}
         <p className="auth-footnote">Access is limited to authorized team members.</p>
-        <a className="demo-switch" href="?demo=1">
-          Explore with fictional demo data <ArrowRight size={14} />
-        </a>
       </section>
     </main>
   )

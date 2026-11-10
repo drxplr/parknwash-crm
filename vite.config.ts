@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const cloud = (env.VITE_CRM_MODE ?? 'cloud') === 'cloud'
+  const cloud = command === 'build' || (env.VITE_CRM_MODE ?? 'cloud') === 'cloud'
   let backendOrigin = ''
   if (command === 'build' && cloud) {
     if (

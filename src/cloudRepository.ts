@@ -4,6 +4,7 @@ import { swissInstant } from './model'
 
 type Row = Record<string, unknown>
 export interface Snapshot {
+  imported_bookings?: Row[]
   workspace: Row & { id: string; revision: number }
   role: 'admin' | 'editor' | 'viewer'
   can_manage?: boolean
@@ -51,6 +52,25 @@ const localParts = (iso: string) => {
 export function snapshotToStore(s: Snapshot): Store {
   const region = (id: unknown) => s.regions.find((r) => r.id === id)?.name as Region | undefined
   return {
+    importedBookings: (s.imported_bookings ?? []).map((b) => ({
+      id: str(b, 'id'),
+      customerId: str(b, 'customer_id'),
+      vehicleId: b.vehicle_id ? str(b, 'vehicle_id') : undefined,
+      vehicleLabel: str(b, 'vehicle_label'),
+      region: b.region as Region | undefined,
+      ...localParts(str(b, 'starts_at')),
+      service: str(b, 'service'),
+      status: str(b, 'source_status'),
+      noShow: b.no_show === true,
+      price: b.price == null ? null : number(b, 'price'),
+      currency: b.currency ? str(b, 'currency') : null,
+      paymentStatus: b.payment_status ? str(b, 'payment_status') : null,
+      amountPaid: b.amount_paid == null ? null : number(b, 'amount_paid'),
+      balanceDue: b.balance_due == null ? null : number(b, 'balance_due'),
+      address: str(b, 'address'),
+      notes: str(b, 'notes'),
+      sourceId: str(b, 'external_id').replace('vcita:booking:', ''),
+    })),
     teamAccounts: s.team_accounts ?? [],
     customers: s.customers.map((c) => {
       const contacts = s.contacts.filter((r) => r.customer_id === c.id)
@@ -76,20 +96,23 @@ export function snapshotToStore(s: Snapshot): Store {
         unsubscribed: c.unsubscribed === true,
       }
     }),
-    vehicles: s.vehicles.map((v) => ({
-      id: str(v, 'id'),
-      customerId: str(v, 'customer_id'),
-      model:
-        (str(v, 'model').toLowerCase().startsWith(str(v, 'make').toLowerCase())
-          ? str(v, 'model')
-          : [str(v, 'make'), str(v, 'model')].filter(Boolean).join(' ')) ||
-        str(v, 'source_vehicle_name') ||
-        'Vehicle',
-      plate: str(v, 'registration'),
-      color: str(v, 'color'),
-      size: str(v, 'size'),
-      notes: str(v, 'notes'),
-    })),
+    vehicles: s.vehicles
+      .filter((v) => v.archived !== true)
+      .map((v) => ({
+        id: str(v, 'id'),
+        customerId: str(v, 'customer_id'),
+        model:
+          (str(v, 'model').toLowerCase().startsWith(str(v, 'make').toLowerCase())
+            ? str(v, 'model')
+            : [str(v, 'make'), str(v, 'model')].filter(Boolean).join(' ')) ||
+          str(v, 'source_vehicle_name') ||
+          'Vehicle',
+        plate: str(v, 'registration'),
+        color: str(v, 'color'),
+        size: str(v, 'size'),
+        notes: str(v, 'notes'),
+        lastWashOn: v.last_wash_on ? str(v, 'last_wash_on') : undefined,
+      })),
     bookings: s.bookings.map((b) => ({
       id: str(b, 'id'),
       vehicleId: str(b, 'vehicle_id'),

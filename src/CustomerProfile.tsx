@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { customerColorStyle } from './customerColors'
 import { ActivityHistory } from './ActivityHistory'
+import { ImportedHistory } from './ImportedHistory'
 import { CustomerDetails } from './Operations'
 import { Select } from './Select'
 import { dayLabel, money, whatsappLink } from './model'
@@ -55,6 +56,7 @@ export function CustomerProfile({
   const vehicles = store.vehicles.filter((v) => v.customerId === c.id)
   const vehicleIds = new Set(vehicles.map((v) => v.id))
   const bookings = store.bookings.filter((b) => vehicleIds.has(b.vehicleId))
+  const imported = (store.importedBookings ?? []).filter((b) => b.customerId === c.id)
   const chronological = [...bookings].sort((a, b) =>
     (a.date + a.time).localeCompare(b.date + b.time),
   )
@@ -199,7 +201,9 @@ export function CustomerProfile({
             >
               {t}
               {t === 'History' && activities.length > 0 && <span>{activities.length}</span>}
-              {t === 'Bookings' && bookings.length > 0 && <span>{bookings.length}</span>}
+              {t === 'Bookings' && bookings.length + imported.length > 0 && (
+                <span>{bookings.length + imported.length}</span>
+              )}
             </button>
           ))}
         </div>
@@ -243,10 +247,11 @@ export function CustomerProfile({
           <ActivityHistory activities={activities} addNote={onAddNote} readOnly={readOnly} />
         ) : tab === 'Bookings' ? (
           <div className="client-booking-list">
-            {chronological.length ? (
-              [...chronological].reverse().map((b) => bookingRow(b))
-            ) : (
-              <p className="client-empty-inline">No bookings yet.</p>
+            {chronological.length
+              ? [...chronological].reverse().map((b) => bookingRow(b))
+              : !imported.length && <p className="client-empty-inline">No bookings yet.</p>}
+            {imported.length > 0 && (
+              <ImportedHistory compact records={imported} customers={store.customers} />
             )}
           </div>
         ) : (
@@ -429,6 +434,23 @@ export function CustomerProfile({
                 </span>
                 <span>{completed.length} completed</span>
                 <span>{money(completed.reduce((n, b) => n + b.price, 0))} total</span>
+              </div>
+            )}
+            {!completed.length && imported.some((b) => b.status === 'completed') && (
+              <div className="client-service-summary">
+                <span>
+                  Last vcita visit{' '}
+                  <strong>
+                    {dayLabel(
+                      imported
+                        .filter((b) => b.status === 'completed')
+                        .sort((a, b) => b.date.localeCompare(a.date))[0].date,
+                    )}
+                  </strong>
+                </span>
+                <span>
+                  {imported.filter((b) => b.status === 'completed').length} completed in vcita
+                </span>
               </div>
             )}
             <details className="client-secondary">

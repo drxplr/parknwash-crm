@@ -39,6 +39,10 @@ export function Messages({
     )
     .filter((r) => clients.some((c) => c.id === r.customerId))
   const sent = store.sentMessages.filter((m) => clients.some((c) => c.id === m.customerId))
+  const reachable = clients.filter(
+    (c) => /^\+?[1-9]\d{6,14}$/.test((c.phone ?? '').replace(/[\s()-]/g, '')) && !c.unsubscribed,
+  )
+  const optedIn = reachable.filter((c) => c.whatsappOptIn)
   const select = (r: Reminder) => {
     setSelected(r)
     setText(r.text)
@@ -92,6 +96,17 @@ export function Messages({
           ))}
         </div>
       </div>
+      {live && (
+        <div className="messaging-readiness" aria-label="WhatsApp readiness">
+          <strong>WhatsApp readiness</strong>
+          <span>{reachable.length} reachable contacts</span>
+          <span>{optedIn.length} opted in for wash reminders</span>
+          <p>
+            Manual WhatsApp preparation · Cloud API is test-only. Automatic customer campaigns are
+            not enabled.
+          </p>
+        </div>
+      )}
       <details className="inline-help">
         <summary>
           <Info size={14} aria-hidden="true" />
@@ -134,7 +149,7 @@ export function Messages({
               ))}
             </tbody>
           </table>
-          {!queue.length && <p className="operation-caption">All caught up.</p>}
+          {!queue.length && <p className="operation-caption">{live && !optedIn.length ? 'No eligible wash reminders: customer opt-in is required.' : 'All caught up.'}</p>}
         </div>
       )}
       {tab === 'Manual follow-up' && (

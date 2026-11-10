@@ -12,6 +12,7 @@ import { startOfWeek, calendarRangeLabel } from './calendarModel'
 import { Select } from './Select'
 import { customerColorStyle } from './customerColors'
 import { Messages, Settings } from './Operations'
+import { ImportedHistory } from './ImportedHistory'
 import type { WhatsAppTestApi } from './WhatsAppTest'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
@@ -227,6 +228,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     [tableSearch, setTableSearch] = useState(''),
     [directoryView, setDirectoryView] = useState<'Customers' | 'Vehicles'>('Customers'),
     [sort, setSort] = useState('Name A–Z')
+  const [historyOpen, setHistoryOpen] = useState(false)
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [page])
@@ -324,13 +326,24 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     )
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
   const lastVisit = (customerId: string, vehicleId?: string) =>
-    store.bookings
-      .filter(
-        (b) =>
-          b.status === 'Completed' &&
-          (vehicleId ? b.vehicleId === vehicleId : owner(b).id === customerId),
-      )
-      .map((b) => b.date + b.time)
+    [
+      ...store.bookings
+        .filter(
+          (b) =>
+            b.status === 'Completed' &&
+            (vehicleId ? b.vehicleId === vehicleId : owner(b).id === customerId),
+        )
+        .map((b) => b.date + b.time),
+      ...(store.importedBookings ?? [])
+        .filter(
+          (b) =>
+            b.customerId === customerId &&
+            (!vehicleId || b.vehicleId === vehicleId) &&
+            b.status === 'completed' &&
+            !b.noShow,
+        )
+        .map((b) => b.date + b.time),
+    ]
       .sort()
       .at(-1) ?? ''
   function compareCustomers(a: Customer, b: Customer) {
@@ -644,10 +657,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 {cloud ? 'Sign out' : 'Reset demo'} <RotateCcw size={12} />
               </button>
             </div>
-            <a className="demo-switch" href={cloud ? '?demo=1' : '?'}>
-              {cloud ? 'Explore demo' : 'Back to live workspace'}
-              <ArrowUpRight size={13} />
-            </a>
             <div className="profile">
               <Avatar name={cloud?.label ?? 'Demo Manager'} />
               <div>
@@ -719,7 +728,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <option>Ticino</option>
                       </Select>
                     </label>
-                    {(page === 'Overview' || page === 'Bookings') && (
+                    {(page === 'Overview' || (page === 'Bookings' && !historyOpen)) && (
                       <label className="select-wrap">
                         <Users size={14} />
                         <Select
@@ -956,10 +965,13 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   <div className="segmented selection-tabs">
                     {(['Calendar', 'List'] as const).map((v) => (
                       <button
-                        className={view === v ? 'selected' : ''}
-                        aria-pressed={view === v}
+                        className={!historyOpen && view === v ? 'selected' : ''}
+                        aria-pressed={!historyOpen && view === v}
                         key={v}
-                        onClick={() => setView(v)}
+                        onClick={() => {
+                          setHistoryOpen(false)
+                          setView(v)
+                        }}
                       >
                         {v === 'List' ? (
                           <SlidersHorizontal size={14} />
@@ -969,137 +981,161 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         {v}
                       </button>
                     ))}
-                  </div>
-                  <div className="date-nav">
-                    <button
-                      className="icon-btn"
-                      aria-label="Previous date range"
-                      onClick={() => setDate(addDays(date, range === 'Week' ? -7 : -1))}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <DatePicker
-                      value={date}
-                      today={today}
-                      label={calendarRangeLabel(rangeStart, rangeEnd)}
-                      onChange={setDate}
-                    />
-                    <button
-                      className="icon-btn"
-                      aria-label="Next date range"
-                      onClick={() => setDate(addDays(date, range === 'Week' ? 7 : 1))}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                    <button
-                      className="btn small-btn"
-                      title={cloud ? 'Today · Europe/Zurich' : 'Demo today · 9 November 2026'}
-                      onClick={() => setDate(today)}
-                    >
-                      Today
-                    </button>
-                  </div>
-                  <div className="booking-controls">
-                    <Select
-                      aria-label="Date range"
-                      value={range}
-                      onChange={(e) => setRange(e.target.value as 'Day' | 'Week')}
-                    >
-                      <option>Week</option>
-                      <option>Day</option>
-                    </Select>
-                    <Select
-                      aria-label="Booking status"
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                    >
-                      <option>All active</option>
-                      <option>All statuses</option>
-                      {statuses.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <div className="schedule-context">
-                  <span>
-                    <strong>{visibleBookings.length}</strong> bookings ·{' '}
-                    {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
-                  </span>
-                  {!cloud && <span className="demo-label">Fictional demo bookings</span>}
-                </div>
-                {(status !== 'All active' ||
-                  region !== 'All regions' ||
-                  staffFilter !== 'All staff') && (
-                  <div className="calendar-filter-state">
-                    <span>
-                      {[
-                        region !== 'All regions' ? region : '',
-                        staffFilter !== 'All staff'
-                          ? staff.find((s) => s.id === staffFilter)?.name
-                          : '',
-                        status !== 'All active' ? status : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setRegion('All regions')
-                        setStaffFilter('All staff')
-                        setStatus('All active')
-                      }}
-                    >
-                      Clear filters <X size={12} />
-                    </button>
-                  </div>
-                )}
-                {view === 'List' ? (
-                  bookingRows(visibleBookings, true)
-                ) : (
-                  <ScheduleCalendar
-                    store={store}
-                    today={today}
-                    bookings={visibleBookings}
-                    team={staff.filter(
-                      (s) =>
-                        (canAssignWash(s) ||
-                          visibleBookings.some((b) => b.staffIds.includes(s.id))) &&
-                        (region === 'All regions' || s.region === region) &&
-                        (staffFilter === 'All staff' || s.id === staffFilter),
+                    {!!store.importedBookings?.length && (
+                      <button
+                        className={historyOpen ? 'selected' : ''}
+                        aria-pressed={historyOpen}
+                        onClick={() => setHistoryOpen(true)}
+                      >
+                        vcita history
+                      </button>
                     )}
-                    date={date}
-                    start={rangeStart}
-                    range={range}
-                    canCreate={
-                      (!cloud || cloud.role !== 'viewer') &&
-                      !!store.settings.services.length &&
-                      !!store.vehicles.length
-                    }
-                    onOpen={(id) => setDetail({ kind: 'booking', id })}
-                    onDay={(day) => {
-                      setDate(day)
-                      setRange('Day')
-                    }}
-                    onCreate={(context) => {
-                      if (
-                        !cloud ||
-                        (cloud.role !== 'viewer' &&
-                          store.settings.services.length &&
-                          store.vehicles.length)
-                      ) {
-                        setBookingStart(context)
-                        setNewBooking(true)
-                      }
-                    }}
-                  />
-                )}
-                <div className="table-footer">
-                  <span>
-                    {visibleBookings.length} bookings in this {range.toLowerCase()}
-                  </span>
-                  <span>Times in Europe/Zurich</span>
+                  </div>
+                  {!historyOpen && (
+                    <>
+                      <div className="date-nav">
+                        <button
+                          className="icon-btn"
+                          aria-label="Previous date range"
+                          onClick={() => setDate(addDays(date, range === 'Week' ? -7 : -1))}
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <DatePicker
+                          value={date}
+                          today={today}
+                          label={calendarRangeLabel(rangeStart, rangeEnd)}
+                          onChange={setDate}
+                        />
+                        <button
+                          className="icon-btn"
+                          aria-label="Next date range"
+                          onClick={() => setDate(addDays(date, range === 'Week' ? 7 : 1))}
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                        <button
+                          className="btn small-btn"
+                          title={cloud ? 'Today · Europe/Zurich' : 'Demo today · 9 November 2026'}
+                          onClick={() => setDate(today)}
+                        >
+                          Today
+                        </button>
+                      </div>
+                      <div className="booking-controls">
+                        <Select
+                          aria-label="Date range"
+                          value={range}
+                          onChange={(e) => setRange(e.target.value as 'Day' | 'Week')}
+                        >
+                          <option>Week</option>
+                          <option>Day</option>
+                        </Select>
+                        <Select
+                          aria-label="Booking status"
+                          value={status}
+                          onChange={(e) => setStatus(e.target.value)}
+                        >
+                          <option>All active</option>
+                          <option>All statuses</option>
+                          {statuses.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </Select>
+                      </div>
+                    </>
+                  )}
                 </div>
+                {historyOpen ? (
+                  <ImportedHistory
+                    records={store.importedBookings ?? []}
+                    customers={store.customers}
+                    region={region}
+                    onCustomer={openCustomer}
+                  />
+                ) : (
+                  <>
+                    <div className="schedule-context">
+                      <span>
+                        <strong>{visibleBookings.length}</strong> bookings ·{' '}
+                        {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
+                      </span>
+                      {!cloud && <span className="demo-label">Fictional demo bookings</span>}
+                    </div>
+                    {(status !== 'All active' ||
+                      region !== 'All regions' ||
+                      staffFilter !== 'All staff') && (
+                      <div className="calendar-filter-state">
+                        <span>
+                          {[
+                            region !== 'All regions' ? region : '',
+                            staffFilter !== 'All staff'
+                              ? staff.find((s) => s.id === staffFilter)?.name
+                              : '',
+                            status !== 'All active' ? status : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setRegion('All regions')
+                            setStaffFilter('All staff')
+                            setStatus('All active')
+                          }}
+                        >
+                          Clear filters <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                    {view === 'List' ? (
+                      bookingRows(visibleBookings, true)
+                    ) : (
+                      <ScheduleCalendar
+                        store={store}
+                        today={today}
+                        bookings={visibleBookings}
+                        team={staff.filter(
+                          (s) =>
+                            (canAssignWash(s) ||
+                              visibleBookings.some((b) => b.staffIds.includes(s.id))) &&
+                            (region === 'All regions' || s.region === region) &&
+                            (staffFilter === 'All staff' || s.id === staffFilter),
+                        )}
+                        date={date}
+                        start={rangeStart}
+                        range={range}
+                        canCreate={
+                          (!cloud || cloud.role !== 'viewer') &&
+                          !!store.settings.services.length &&
+                          !!store.vehicles.length
+                        }
+                        onOpen={(id) => setDetail({ kind: 'booking', id })}
+                        onDay={(day) => {
+                          setDate(day)
+                          setRange('Day')
+                        }}
+                        onCreate={(context) => {
+                          if (
+                            !cloud ||
+                            (cloud.role !== 'viewer' &&
+                              store.settings.services.length &&
+                              store.vehicles.length)
+                          ) {
+                            setBookingStart(context)
+                            setNewBooking(true)
+                          }
+                        }}
+                      />
+                    )}
+                    <div className="table-footer">
+                      <span>
+                        {visibleBookings.length} bookings in this {range.toLowerCase()}
+                      </span>
+                      <span>Times in Europe/Zurich</span>
+                    </div>
+                  </>
+                )}
               </section>
             )}
             {page === 'Customers' && (
@@ -1204,6 +1240,16 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           const bs = store.bookings.filter(
                             (b) => owner(b).id === c.id && b.status === 'Completed',
                           )
+                          const historicalValue = (store.importedBookings ?? [])
+                            .filter(
+                              (b) =>
+                                b.customerId === c.id &&
+                                b.status === 'completed' &&
+                                !b.noShow &&
+                                b.currency === 'CHF',
+                            )
+                            .reduce((sum, b) => sum + (b.price ?? 0), 0)
+                          const latest = lastVisit(c.id)
                           return (
                             <tr key={c.id} onClick={() => openCustomer(c.id)}>
                               <td>
@@ -1257,18 +1303,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                                   )}
                                 </div>
                               </td>
-                              <td>
-                                {bs.length
-                                  ? dayLabel(
-                                      bs
-                                        .map((b) => b.date)
-                                        .sort()
-                                        .at(-1)!,
-                                    )
-                                  : '—'}
-                              </td>
+                              <td>{latest ? dayLabel(latest.slice(0, 10)) : '—'}</td>
                               <td className="align-right amount">
-                                {money(bs.reduce((n, b) => n + b.price, 0))}
+                                {money(bs.reduce((n, b) => n + b.price, 0) + historicalValue)}
                               </td>
                               <td>
                                 <ChevronRight size={15} />
@@ -1398,7 +1435,13 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                               <td>
                                 <RegionBadge region={customer(v.customerId).region} />
                               </td>
-                              <td>{last ? dayLabel(last.date) : 'No visits yet'}</td>
+                              <td>
+                                {last
+                                  ? dayLabel(last.date)
+                                  : v.lastWashOn
+                                    ? dayLabel(v.lastWashOn)
+                                    : 'No visits yet'}
+                              </td>
                               <td>
                                 <button className="row-arrow" aria-label={`Open ${v.model}`}>
                                   <ChevronRight size={16} />
@@ -1578,6 +1621,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           activities={store.activities.filter((a) => a.vehicleId === v.id)}
                           addNote={(text) => addNote(c.id, text, v.id)}
                           bookings={store.bookings.filter((b) => b.vehicleId === v.id)}
+                          importedRecords={(store.importedBookings ?? []).filter(
+                            (b) => b.vehicleId === v.id,
+                          )}
                           renderBookings={(bs) => bookingRows(bs, true)}
                         >
                           <form
@@ -1881,6 +1927,7 @@ function Profile({
   addNote,
   bookings,
   renderBookings,
+  importedRecords = [],
   children,
 }: {
   title: string
@@ -1892,6 +1939,7 @@ function Profile({
   addNote: (s: string) => void
   bookings: Booking[]
   renderBookings: (b: Booking[]) => ReactNode
+  importedRecords?: Store['importedBookings']
   children: ReactNode
 }) {
   const [tab, setTab] = useState('Overview')
@@ -1924,7 +1972,7 @@ function Profile({
             ) : null}
             <div className="profile-summary">
               <div>
-                <strong>{bookings.length}</strong>
+                <strong>{bookings.length + importedRecords.length}</strong>
                 <span>Total bookings</span>
               </div>
               <div>
@@ -1932,7 +1980,12 @@ function Profile({
                   {money(
                     bookings
                       .filter((b) => b.status === 'Completed')
-                      .reduce((n, b) => n + b.price, 0),
+                      .reduce((n, b) => n + b.price, 0) +
+                      importedRecords
+                        .filter(
+                          (b) => b.status === 'completed' && !b.noShow && b.currency === 'CHF',
+                        )
+                        .reduce((sum, b) => sum + (b.price ?? 0), 0),
                   )}
                 </strong>
                 <span>Completed services</span>
@@ -1941,9 +1994,17 @@ function Profile({
           </>
         ) : tab === 'Bookings' ? (
           <div className="profile-bookings">
-            {renderBookings(
-              [...bookings].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)),
+            {!!importedRecords.length && (
+              <ImportedHistory
+                compact
+                records={importedRecords}
+                customers={customer ? [customer] : []}
+              />
             )}
+            {(bookings.length > 0 || !importedRecords.length) &&
+              renderBookings(
+                [...bookings].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)),
+              )}
           </div>
         ) : (
           <ActivityHistory activities={activities} addNote={addNote} />
