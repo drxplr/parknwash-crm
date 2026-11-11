@@ -1,9 +1,10 @@
+import { RegionBadge } from './RegionBadge'
 import { teamRoleLabels, teamRolesLabel } from './teamRoles'
 import { WhatsAppTest } from './WhatsAppTest'
 import type { WhatsAppTestApi } from './WhatsAppTest'
 import type { Staff, TeamRole } from './model'
 import { websitePackages, websiteServices } from './websiteCatalog'
-import { Info, Package, Users, MapPin, Bell, Plus, Check, MessageSquare } from 'lucide-react'
+import { Info, Package, Users, MapPin, Bell, Plus, Check, MessageSquare, ChevronDown } from 'lucide-react'
 import { Select } from './Select'
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -405,6 +406,7 @@ export function Settings({
   ]
   const dirty = JSON.stringify(draft) !== JSON.stringify(store.settings)
   const [teamError, setTeamError] = useState('')
+  const [editingMember, setEditingMember] = useState<string | null>(null)
   function updateMember(index: number, patch: Partial<Staff>) {
     setSaved(false)
     setTeamError('')
@@ -445,15 +447,14 @@ export function Settings({
         onChange={() => setSaved(false)}
         onSubmit={(e) => {
           e.preventDefault()
-          if (
-            draft.staff.some(
-              (m) =>
-                m.roles?.length === 0 || (m.roles?.includes('washer') && m.region === 'Unassigned'),
-            )
-          ) {
+          const invalidMember = draft.staff.find((m) =>
+            !m.name.trim() || m.roles?.length === 0 ||
+            (m.roles?.includes('washer') && m.region === 'Unassigned'))
+          if (invalidMember) {
+            setEditingMember(invalidMember.id)
             setSection('team')
             setTeamError(
-              'Choose at least one role per member and a service region for every washer.',
+              'Enter a name, choose at least one role per member and a service region for every washer.',
             )
             return
           }
@@ -759,6 +760,24 @@ export function Settings({
               )}
               {draft.staff.map((s, i) => (
                 <article className="team-member-card" key={s.id}>
+                  <button type="button" className="team-member-summary"
+                    aria-expanded={editingMember === s.id}
+                    aria-controls={`team-editor-${s.id}`}
+                    onClick={() => {
+                      if (formRef.current && !formRef.current.reportValidity()) return
+                      setEditingMember(editingMember === s.id ? null : s.id)
+                    }}>
+                    <span className="avatar" aria-hidden="true">{s.name.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join('') || <Users size={16} />}</span>
+                    <span className="team-member-identity">
+                      <strong>{s.name.trim() || 'New team member'}</strong>
+                      <small>{store.teamAccounts?.find((a) => a.userId === s.userId)?.email ?? (s.userId ? 'Linked account' : 'No login account')}</small>
+                    </span>
+                    <span className="team-member-roles">{teamRolesLabel(s)}</span>
+                    <RegionBadge region={s.region} />
+                    <span className={`team-member-status ${s.active === false ? 'inactive' : ''}`}><span aria-hidden="true" />{s.active === false ? 'Inactive' : 'Active'}</span>
+                    <ChevronDown size={16} className="team-member-chevron" aria-hidden="true" />
+                  </button>
+                  {editingMember === s.id && <div id={`team-editor-${s.id}`} className="team-member-editor">
                   <div className="settings-staff-row">
                     <span className="avatar">
                       {s.name
@@ -793,10 +812,6 @@ export function Settings({
                     </label>
                   </div>
                   <div className="team-member-detail">
-                    <div className="team-role-summary">
-                      {teamRolesLabel(s)}
-                      {s.active === false && <span>Inactive</span>}
-                    </div>
                     <fieldset className="team-role-options">
                       <legend>Roles</legend>
                       {(['manager', 'washer'] as TeamRole[]).map((role) => (
@@ -851,28 +866,21 @@ export function Settings({
                       </label>
                     </div>
                   </div>
+                  </div>}
                 </article>
               ))}
               <button
                 type="button"
                 className="btn"
-                onClick={() =>
-                  setDraft({
-                    ...draft,
-                    staff: [
-                      ...draft.staff,
-                      {
-                        id: crypto.randomUUID(),
-                        name: '',
-                        initials: '',
-                        region: 'Unassigned',
-                        roles: [],
-                        active: true,
-                        userId: null,
-                      },
-                    ],
-                  })
-                }
+                onClick={() => {
+                  if (formRef.current && !formRef.current.reportValidity()) return
+                  const id = crypto.randomUUID()
+                  setEditingMember(id)
+                  setSaved(false)
+                  setDraft({ ...draft, staff: [...draft.staff, {
+                    id, name: '', initials: '', region: 'Unassigned', roles: [], active: true, userId: null,
+                  }] })
+                }}
               >
                 <Plus size={15} /> Add team member
               </button>
