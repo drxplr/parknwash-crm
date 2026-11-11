@@ -320,7 +320,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     (b) => b.date >= overviewWeekStart && b.date <= overviewWeekEnd && b.status !== 'Cancelled',
   )
   const nextOverviewBookings = overviewWeekBookings
-    .filter((b) => b.date > overviewDate && !['Completed', 'In progress'].includes(b.status))
+    .filter((b) => b.date > overviewDate && b.date >= today && !['Completed', 'In progress'].includes(b.status))
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 3)
 
