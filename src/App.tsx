@@ -219,6 +219,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     [menuOpen, setMenuOpen] = useState(false),
     [resetOpen, setResetOpen] = useState(false),
     [addCustomerOpen, setAddCustomerOpen] = useState(false)
+  const [overviewDate, setOverviewDate] = useState(today)
   const [view, setView] = useState<'List' | 'Calendar'>('Calendar'),
     [date, setDate] = useState(today),
     [range, setRange] = useState<'Day' | 'Week'>('Week'),
@@ -309,10 +310,20 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
   const filtered = store.bookings.filter(
     (b) => inRegion(owner(b)) && (staffFilter === 'All staff' || b.staffIds.includes(staffFilter)),
   )
-  const todays = filtered
-    .filter((b) => b.date === today && b.status !== 'Cancelled')
+  const overviewBookings = filtered
+    .filter((b) => b.date === overviewDate && b.status !== 'Cancelled')
     .sort((a, b) => a.time.localeCompare(b.time))
-  const pending = todays.filter((b) => b.status === 'Pending')
+  const pending = overviewBookings.filter((b) => b.status === 'Pending')
+  const overviewWeekStart = startOfWeek(overviewDate)
+  const overviewWeekEnd = addDays(overviewWeekStart, 6)
+  const overviewWeekBookings = filtered.filter(
+    (b) => b.date >= overviewWeekStart && b.date <= overviewWeekEnd && b.status !== 'Cancelled',
+  )
+  const nextOverviewBookings = overviewWeekBookings
+    .filter((b) => b.date > overviewDate && !['Completed', 'In progress'].includes(b.status))
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 3)
+
   const overviewTeam = staff.filter(
     (s) =>
       canAssignWash(s) &&
@@ -704,11 +715,11 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
           </header>
           <main className="workspace-main" data-page={page.toLowerCase()}>
             <PageHeader
-              title={page === 'Overview' ? 'Today' : page}
+              title={page}
               badge={!cloud ? 'Demo' : undefined}
               meta={
                 page === 'Overview'
-                  ? dayLabel(today, {
+                  ? dayLabel(overviewDate, {
                       weekday: 'long',
                       day: 'numeric',
                       month: 'long',
@@ -783,7 +794,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           }
 
                           setBookingStart({
-                            date,
+                            date: page === 'Overview' ? overviewDate : date,
                             time: '09:00',
                             staffId: staffFilter === 'All staff' ? undefined : staffFilter,
                           })
@@ -805,78 +816,180 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             )}
             {page === 'Overview' && (
               <div className="overview-workspace">
-                <section className="card overview-schedule" aria-label="Today's schedule">
-                  <div className="section-heading">
-                    <div>
-                      <h2>
-                        Today's schedule <span className="count-pill">{todays.length}</span>
-                      </h2>
-                      <p className="overview-schedule-date">{dayLabel(today)} · Europe/Zurich</p>
+                <div className="overview-main">
+                  <section className="card overview-week" aria-label="Week overview">
+                    <header className="overview-week-heading">
+                      <div>
+                        <h2>
+                          Week overview{' '}
+                          <span className="count-pill">{overviewWeekBookings.length}</span>
+                        </h2>
+                        <p>{calendarRangeLabel(overviewWeekStart, overviewWeekEnd)}</p>
+                      </div>
+                      <div className="overview-week-navigation">
+                        <button
+                          className="icon-btn"
+                          aria-label="Previous overview week"
+                          onClick={() => setOverviewDate(addDays(overviewDate, -7))}
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <button className="btn small-btn" onClick={() => setOverviewDate(today)}>
+                          Today
+                        </button>
+                        <button
+                          className="icon-btn"
+                          aria-label="Next overview week"
+                          onClick={() => setOverviewDate(addDays(overviewDate, 7))}
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </header>
+                    <div className="overview-week-days">
+                      {Array.from({ length: 7 }, (_, i) => {
+                        const day = addDays(overviewWeekStart, i)
+                        const items = overviewWeekBookings.filter((b) => b.date === day)
+                        return (
+                          <button
+                            key={day}
+                            className={`overview-week-day ${day === today ? 'is-today' : ''}`}
+                            aria-pressed={day === overviewDate}
+                            aria-current={day === today ? 'date' : undefined}
+                            aria-label={`${dayLabel(day, { weekday: 'long', day: 'numeric', month: 'long' })}: ${items.length} ${items.length === 1 ? 'booking' : 'bookings'}`}
+                            onClick={() => setOverviewDate(day)}
+                          >
+                            <span>{dayLabel(day, { weekday: 'short' })}</span>
+                            <strong>{dayLabel(day, { day: 'numeric' })}</strong>
+                            <small>
+                              {items.length
+                                ? `${items.length} ${items.length === 1 ? 'booking' : 'bookings'}`
+                                : '—'}
+                            </small>
+                          </button>
+                        )
+                      })}
                     </div>
-                    {todays.length > 0 && (
-                      <button
-                        className="text-button"
-                        onClick={() => {
-                          navigate('Bookings')
-                          setDate(today)
-                        }}
-                      >
-                        All bookings <ArrowRight size={14} />
-                      </button>
+                  </section>
+                  <section className="card overview-schedule" aria-label="Selected day's schedule">
+                    <div className="section-heading">
+                      <div>
+                        <h2>
+                          {overviewDate === today
+                            ? "Today's schedule"
+                            : dayLabel(overviewDate, {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'short',
+                              })}{' '}
+                          <span className="count-pill">{overviewBookings.length}</span>
+                        </h2>
+                        <p className="overview-schedule-date">
+                          {dayLabel(overviewDate)} · Europe/Zurich
+                        </p>
+                      </div>
+                      {overviewBookings.length > 0 && (
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            navigate('Bookings')
+                            setDate(overviewDate)
+                          }}
+                        >
+                          All bookings <ArrowRight size={14} />
+                        </button>
+                      )}
+                    </div>
+                    {overviewBookings.length ? (
+                      bookingRows(overviewBookings)
+                    ) : (
+                      <div className="overview-empty">
+                        <CalendarDays size={24} aria-hidden="true" />
+                        <h3>
+                          {overviewDate === today ? 'No bookings today' : 'No bookings on this day'}
+                        </h3>
+                        <p>
+                          {region !== 'All regions' || staffFilter !== 'All staff'
+                            ? 'No appointments match the current filters.'
+                            : nextOverviewBookings.length
+                              ? 'Coming up later this week'
+                              : 'Select another day above or open the calendar.'}
+                        </p>
+                        {nextOverviewBookings.length > 0 && (
+                          <div className="overview-next-bookings">
+                            {nextOverviewBookings.map((b) => (
+                              <button
+                                key={b.id}
+                                onClick={() => setDetail({ kind: 'booking', id: b.id })}
+                              >
+                                <span>
+                                  <time>
+                                    {dayLabel(b.date, { weekday: 'short', day: 'numeric' })} ·{' '}
+                                    {b.time}
+                                  </time>
+                                  <strong>{owner(b).name}</strong>
+                                  <small>
+                                    {vehicle(b.vehicleId).model} · {b.service.split(' · ')[0]}
+                                  </small>
+                                </span>
+                                <ChevronRight size={14} aria-hidden="true" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            navigate('Bookings')
+                            setView('Calendar')
+                            setDate(overviewDate)
+                          }}
+                        >
+                          Open calendar <ArrowRight size={14} />
+                        </button>
+                      </div>
                     )}
-                  </div>
-                  {todays.length ? (
-                    bookingRows(todays)
-                  ) : (
-                    <div className="overview-empty">
-                      <CalendarDays size={24} aria-hidden="true" />
-                      <h3>No bookings today</h3>
-                      <p>
-                        {region !== 'All regions' || staffFilter !== 'All staff'
-                          ? 'No appointments match the current filters.'
-                          : 'Your appointments will appear here.'}
-                      </p>
-                      <button
-                        className="btn"
-                        onClick={() => {
-                          navigate('Bookings')
-                          setView('Calendar')
-                          setDate(today)
-                        }}
-                      >
-                        Open calendar <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                  {todays.length > 0 && (
-                    <div className="table-footer">
-                      <span>{todays.length} bookings</span>
-                      <span>
-                        {(todays.reduce((n, b) => n + b.duration, 0) / 60).toFixed(1)} service hours
-                      </span>
-                    </div>
-                  )}
-                </section>
+                    {overviewBookings.length > 0 && (
+                      <div className="table-footer">
+                        <span>{overviewBookings.length} bookings</span>
+                        <span>
+                          {(overviewBookings.reduce((n, b) => n + b.duration, 0) / 60).toFixed(1)}{' '}
+                          service hours
+                        </span>
+                      </div>
+                    )}
+                  </section>
+                </div>
                 <aside className="overview-sidebar" aria-label="Day summary and actions">
                   <section className="card overview-summary" aria-label="Day summary">
-                    <h2>Today</h2>
+                    <h2>
+                      {overviewDate === today
+                        ? 'Today'
+                        : dayLabel(overviewDate, {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                    </h2>
                     <dl>
                       <div>
                         <dt>Bookings</dt>
-                        <dd>{todays.length}</dd>
+                        <dd>{overviewBookings.length}</dd>
                       </div>
                       <div>
                         <dt>Completed</dt>
-                        <dd>{todays.filter((b) => b.status === 'Completed').length}</dd>
+                        <dd>{overviewBookings.filter((b) => b.status === 'Completed').length}</dd>
                       </div>
                       <div>
                         <dt>Scheduled</dt>
-                        <dd>{money(todays.reduce((n, b) => n + b.price, 0))}</dd>
+                        <dd>{money(overviewBookings.reduce((n, b) => n + b.price, 0))}</dd>
                       </div>
                       <div>
                         <dt>Collected</dt>
                         <dd>
-                          {money(todays.filter((b) => b.paid).reduce((n, b) => n + b.price, 0))}
+                          {money(
+                            overviewBookings.filter((b) => b.paid).reduce((n, b) => n + b.price, 0),
+                          )}
                         </dd>
                       </div>
                     </dl>
@@ -925,7 +1038,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           setRange('Day')
                           setView('Calendar')
                           navigate('Bookings')
-                          setDate(today)
+                          setDate(overviewDate)
                         }}
                       >
                         <Avatar name={s.name} small />
@@ -933,7 +1046,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           <strong>{s.name}</strong>
                           <small>{s.region}</small>
                         </span>
-                        <span>{todays.filter((b) => b.staffIds.includes(s.id)).length} jobs</span>
+                        <span>
+                          {overviewBookings.filter((b) => b.staffIds.includes(s.id)).length} jobs
+                        </span>
                       </button>
                     ))}
                     {!overviewTeam.length && (

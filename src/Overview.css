@@ -209,3 +209,157 @@
     padding: 30px 16px;
   }
 }
+
+.overview-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.overview-week {
+  padding: 16px;
+}
+.overview-week-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.overview-week-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: 0;
+  font-weight: 500;
+}
+.overview-week-heading p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: #737373;
+}
+.overview-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.overview-week-navigation .btn {
+  padding: 7px 10px;
+  min-height: 32px;
+}
+.overview-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.overview-week-day {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 10px 4px;
+  min-width: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #171717;
+  cursor: pointer;
+}
+.overview-week-day > span {
+  font-size: 11px;
+  color: #737373;
+}
+.overview-week-day strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+.overview-week-day small {
+  font-size: 10px;
+  color: #737373;
+  white-space: nowrap;
+}
+.overview-week-day.is-today strong {
+  color: #0066ff;
+}
+.overview-week-day[aria-pressed='true'] {
+  background: #eaf1ff;
+  box-shadow: inset 0 0 0 1px #b8d2ff;
+}
+.overview-week-day[aria-pressed='true'] > span,
+.overview-week-day[aria-pressed='true'] strong {
+  color: #0055d4;
+}
+.overview-week-day:hover {
+  background: #eee;
+  text-decoration: none;
+}
+.overview-week-day[aria-pressed='true']:hover {
+  background: #e0ebff;
+}
+.overview-week-day:focus-visible,
+.overview-next-bookings button:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+.overview-next-bookings {
+  width: min(100%, 480px);
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.overview-next-bookings button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f5f5f5;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.overview-next-bookings time {
+  color: #0066ff;
+  font-size: 11px;
+}
+.overview-next-bookings strong {
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+.overview-next-bookings small {
+  display: block;
+  font-size: 11px;
+  color: #737373;
+  margin-top: 3px;
+}
+.overview-next-bookings button:hover {
+  background: #eee;
+  text-decoration: none;
+}
+@media (max-width: 600px) {
+  .overview-week {
+    padding: 12px;
+  }
+  .overview-week-heading {
+    gap: 6px;
+  }
+  .overview-week-days {
+    gap: 3px;
+  }
+  .overview-week-day {
+    padding: 10px 1px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+  .overview-week-day small {
+    font-size: 9px;
+  }
+  .overview-week-navigation .icon-btn {
+    width: 30px;
+    min-width: 30px;
+  }
+}
