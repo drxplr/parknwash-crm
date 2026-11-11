@@ -1,3 +1,4 @@
+import './Overview.css'
 import { WasherWorkspace } from './WasherWorkspace'
 import { canAssignWash } from './teamRoles'
 import { RegionBadge } from './RegionBadge'
@@ -17,18 +18,16 @@ import type { WhatsAppTestApi } from './WhatsAppTest'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
-  ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
   CarFront,
   Check,
-  CheckCheck,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Command,
-  CreditCard,
   LayoutDashboard,
   MapPin,
   MessageSquare,
@@ -314,6 +313,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     .filter((b) => b.date === today && b.status !== 'Cancelled')
     .sort((a, b) => a.time.localeCompare(b.time))
   const pending = todays.filter((b) => b.status === 'Pending')
+  const overviewTeam = staff.filter(
+    (s) =>
+      canAssignWash(s) &&
+      (region === 'All regions' || s.region === region) &&
+      (staffFilter === 'All staff' || s.id === staffFilter),
+  )
   const rangeStart = range === 'Week' ? startOfWeek(date) : date
   const rangeEnd = addDays(rangeStart, range === 'Week' ? 6 : 0)
   const visibleBookings = filtered
@@ -799,165 +804,144 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               </div>
             )}
             {page === 'Overview' && (
-              <>
-                <section className="stats-grid">
-                  {[
-                    {
-                      label: "Today's bookings",
-                      value: todays.length,
-                      foot: `Across ${new Set(todays.map((b) => owner(b).region)).size} locations`,
-                      icon: CalendarDays,
-                    },
-                    {
-                      label: 'To confirm',
-                      value: pending.length,
-                      foot: 'Awaiting confirmation',
-                      icon: Clock3,
-                    },
-                    {
-                      label: 'Completed',
-                      value: todays.filter((b) => b.status === 'Completed').length,
-                      foot: 'Services finished',
-                      icon: CheckCheck,
-                    },
-                    {
-                      label: 'Scheduled value',
-                      value: money(todays.reduce((n, b) => n + b.price, 0)),
-                      foot: `${money(todays.filter((b) => b.paid).reduce((n, b) => n + b.price, 0))} collected`,
-                      icon: CreditCard,
-                    },
-                  ].map((s, i) => (
-                    <div className="stat" key={s.label}>
-                      <div className="stat-label">
-                        {s.label}
-                        <s.icon size={16} />
-                      </div>
-                      <div className="stat-value">
-                        {s.value}
-                        {i === 2 && (
-                          <span className="stat-check">
-                            <Check size={15} />
-                          </span>
-                        )}
-                      </div>
-                      {i === 3 && (
-                        <div className="stat-foot">
-                          <ArrowDownLeft size={12} /> {s.foot}
-                        </div>
-                      )}
+              <div className="overview-workspace">
+                <section className="card overview-schedule" aria-label="Today's schedule">
+                  <div className="section-heading">
+                    <div>
+                      <h2>
+                        Today's schedule <span className="count-pill">{todays.length}</span>
+                      </h2>
+                      <p className="overview-schedule-date">{dayLabel(today)} · Europe/Zurich</p>
                     </div>
-                  ))}
-                </section>
-                <div className="overview-grid">
-                  <div>
-                    <section className="card schedule-card">
-                      <div className="section-heading">
-                        <div>
-                          <h2>
-                            Today's schedule <span className="count-pill">{todays.length}</span>
-                          </h2>
-                        </div>
-                        <button
-                          className="text-button"
-                          onClick={() => {
-                            navigate('Bookings')
-                            setDate(today)
-                          }}
-                        >
-                          All bookings <ArrowRight size={14} />
-                        </button>
-                      </div>
-                      {bookingRows(todays)}
-                      <div className="table-footer">
-                        <span>Zurich time</span>
-                        <span>
-                          {todays.length} bookings ·{' '}
-                          {(todays.reduce((n, b) => n + b.duration, 0) / 60).toFixed(1)} service
-                          hours
-                        </span>
-                      </div>
-                    </section>
+                    {todays.length > 0 && (
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          navigate('Bookings')
+                          setDate(today)
+                        }}
+                      >
+                        All bookings <ArrowRight size={14} />
+                      </button>
+                    )}
                   </div>
-                  <div className="right-column">
-                    <section className="card attention-card">
+                  {todays.length ? (
+                    bookingRows(todays)
+                  ) : (
+                    <div className="overview-empty">
+                      <CalendarDays size={24} aria-hidden="true" />
+                      <h3>No bookings today</h3>
+                      <p>
+                        {region !== 'All regions' || staffFilter !== 'All staff'
+                          ? 'No appointments match the current filters.'
+                          : 'Your appointments will appear here.'}
+                      </p>
+                      <button
+                        className="btn"
+                        onClick={() => {
+                          navigate('Bookings')
+                          setView('Calendar')
+                          setDate(today)
+                        }}
+                      >
+                        Open calendar <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                  {todays.length > 0 && (
+                    <div className="table-footer">
+                      <span>{todays.length} bookings</span>
+                      <span>
+                        {(todays.reduce((n, b) => n + b.duration, 0) / 60).toFixed(1)} service hours
+                      </span>
+                    </div>
+                  )}
+                </section>
+                <aside className="overview-sidebar" aria-label="Day summary and actions">
+                  <section className="card overview-summary" aria-label="Day summary">
+                    <h2>Today</h2>
+                    <dl>
+                      <div>
+                        <dt>Bookings</dt>
+                        <dd>{todays.length}</dd>
+                      </div>
+                      <div>
+                        <dt>Completed</dt>
+                        <dd>{todays.filter((b) => b.status === 'Completed').length}</dd>
+                      </div>
+                      <div>
+                        <dt>Scheduled</dt>
+                        <dd>{money(todays.reduce((n, b) => n + b.price, 0))}</dd>
+                      </div>
+                      <div>
+                        <dt>Collected</dt>
+                        <dd>
+                          {money(todays.filter((b) => b.paid).reduce((n, b) => n + b.price, 0))}
+                        </dd>
+                      </div>
+                    </dl>
+                  </section>
+                  {pending.length > 0 && (
+                    <section
+                      className="card overview-confirmations"
+                      aria-label="Bookings to confirm"
+                    >
                       <div className="section-heading">
                         <h2>
                           <span className="amber-dot" />
-                          Needs attention
+                          To confirm
                         </h2>
                         <span className="count-pill">{pending.length}</span>
                       </div>
-                      {pending.length ? (
-                        pending.map((b) => (
-                          <button
-                            className="attention-item"
-                            key={b.id}
-                            onClick={() => setDetail({ kind: 'booking', id: b.id })}
-                          >
-                            <div className="attention-icon">
-                              <Clock3 size={17} />
-                            </div>
-                            <div>
-                              <strong>{owner(b).name}</strong>
-                              <p>{vehicle(b.vehicleId).model}</p>
-                              <span>{b.time} · To confirm</span>
-                            </div>
-                            <ChevronRight size={14} />
-                          </button>
-                        ))
-                      ) : (
-                        <div className="all-clear">
-                          <CheckCheck size={20} />
-                          All confirmed
-                        </div>
-                      )}
+                      {pending.map((b) => (
+                        <button
+                          className="overview-confirmation"
+                          key={b.id}
+                          onClick={() => setDetail({ kind: 'booking', id: b.id })}
+                        >
+                          <time>{b.time}</time>
+                          <span>
+                            <strong>{owner(b).name}</strong>
+                            <small>{vehicle(b.vehicleId).model}</small>
+                          </span>
+                          <ChevronRight size={14} aria-hidden="true" />
+                        </button>
+                      ))}
                     </section>
-                    <section className="card team-card">
-                      <div className="section-heading">
-                        <h2>Team today</h2>
-                        <span className="muted">
-                          {
-                            staff.filter(
-                              (s) =>
-                                (region === 'All regions' || s.region === region) &&
-                                (staffFilter === 'All staff' || s.id === staffFilter),
-                            ).length
-                          }{' '}
-                          staff
+                  )}
+                  <details className="card overview-team">
+                    <summary>
+                      <Users size={16} aria-hidden="true" />
+                      <span>Wash team</span>
+                      <span className="count-pill">{overviewTeam.length}</span>
+                      <ChevronDown size={14} aria-hidden="true" />
+                    </summary>
+                    {overviewTeam.map((s) => (
+                      <button
+                        className="overview-team-member"
+                        key={s.id}
+                        onClick={() => {
+                          setStaffFilter(s.id)
+                          setRange('Day')
+                          setView('Calendar')
+                          navigate('Bookings')
+                          setDate(today)
+                        }}
+                      >
+                        <Avatar name={s.name} small />
+                        <span>
+                          <strong>{s.name}</strong>
+                          <small>{s.region}</small>
                         </span>
-                      </div>
-                      {staff
-                        .filter(
-                          (s) =>
-                            (region === 'All regions' || s.region === region) &&
-                            (staffFilter === 'All staff' || s.id === staffFilter),
-                        )
-                        .map((s) => (
-                          <button
-                            className="team-row"
-                            key={s.id}
-                            onClick={() => {
-                              setStaffFilter(s.id)
-                              setRange('Day')
-                              setView('Calendar')
-                              navigate('Bookings')
-                              setDate(today)
-                            }}
-                          >
-                            <Avatar name={s.name} />
-                            <div>
-                              <strong>{s.name}</strong>
-                              <span>{s.region}</span>
-                            </div>
-                            <span>
-                              {todays.filter((b) => b.staffIds.includes(s.id)).length} jobs
-                            </span>
-                          </button>
-                        ))}
-                    </section>
-                  </div>
-                </div>
-              </>
+                        <span>{todays.filter((b) => b.staffIds.includes(s.id)).length} jobs</span>
+                      </button>
+                    ))}
+                    {!overviewTeam.length && (
+                      <p className="overview-team-empty">No active washers in these filters.</p>
+                    )}
+                  </details>
+                </aside>
+              </div>
             )}
             {page === 'Bookings' && (
               <section className="card">

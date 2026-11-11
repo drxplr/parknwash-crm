@@ -1,0 +1,211 @@
+/* Schedule first; one quiet, compact summary beside it. */
+.overview-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 236px;
+  align-items: start;
+  gap: 20px;
+}
+.overview-workspace > * {
+  min-width: 0;
+}
+.overview-sidebar {
+  display: grid;
+  gap: 12px;
+}
+.overview-workspace .card {
+  border-radius: 20px;
+}
+.overview-schedule .section-heading {
+  padding: 18px 20px;
+}
+.overview-schedule-date {
+  font-size: 11px;
+  color: #737373;
+  margin: 6px 0 0;
+}
+.overview-summary {
+  padding: 18px;
+}
+.overview-summary h2 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 14px;
+}
+.overview-summary dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.overview-summary dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.overview-summary dt {
+  font-size: 12px;
+  color: #737373;
+}
+.overview-summary dd {
+  margin: 0;
+  font-size: 13px;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.overview-confirmations .section-heading {
+  padding: 16px 18px 10px;
+}
+.overview-confirmations h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.overview-confirmation,
+.overview-team-member {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 12px 18px;
+  cursor: pointer;
+  color: #171717;
+}
+.overview-confirmation {
+  grid-template-columns: 36px minmax(0, 1fr) 14px;
+}
+.overview-confirmation time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.overview-confirmation strong,
+.overview-team-member strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.overview-confirmation small,
+.overview-team-member small {
+  display: block;
+  font-size: 11px;
+  color: #737373;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.overview-confirmation > svg {
+  color: #737373;
+}
+.overview-confirmation:hover,
+.overview-team-member:hover,
+.overview-team > summary:hover {
+  background: #f5f5f5;
+  text-decoration: none;
+}
+.overview-confirmation:focus-visible,
+.overview-team-member:focus-visible,
+.overview-team > summary:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: -3px;
+  border-radius: 12px;
+}
+.overview-team > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+  color: #171717;
+}
+.overview-team > summary::-webkit-details-marker {
+  display: none;
+}
+.overview-team > summary::before,
+.overview-team > summary::after {
+  display: none;
+}
+.overview-team > summary .count-pill {
+  margin-left: auto;
+}
+.overview-team[open] > summary > svg:last-child {
+  transform: rotate(180deg);
+}
+.overview-team-member {
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.overview-team-member .avatar {
+  height: 26px;
+  width: 26px;
+  min-width: 26px;
+  font-size: 10px;
+}
+.overview-team-member > span:last-child {
+  font-size: 10px;
+  color: #737373;
+  white-space: nowrap;
+}
+.overview-team-empty {
+  margin: 0;
+  padding: 0 18px 16px;
+  font-size: 12px;
+  color: #737373;
+}
+.overview-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 42px 20px;
+}
+.overview-empty > svg {
+  color: #737373;
+}
+.overview-empty h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+.overview-empty p {
+  font-size: 12px;
+  color: #737373;
+  margin: 0;
+}
+.overview-empty .btn {
+  margin-top: 6px;
+}
+@media (max-width: 1100px) {
+  .overview-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .overview-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 600px) {
+  .overview-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .overview-schedule .section-heading {
+    padding: 16px;
+  }
+  .overview-schedule .section-heading h2 {
+    font-size: 14px;
+  }
+  .overview-schedule .text-button {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .overview-empty {
+    padding: 30px 16px;
+  }
+}
