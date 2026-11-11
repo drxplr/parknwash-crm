@@ -211,8 +211,6 @@
 }
 
 .overview-main {
-  display: grid;
-  gap: 16px;
   min-width: 0;
 }
 .overview-week {
@@ -361,5 +359,68 @@
   .overview-week-navigation .icon-btn {
     width: 30px;
     min-width: 30px;
+  }
+}
+
+/* Week selection and its agenda are one continuous surface. */
+.overview-schedule {
+  border-top: 1px solid #ededed;
+}
+.overview-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+}
+.overview-day-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #525252;
+  font-size: 12px;
+  font-weight: 500;
+}
+.overview-day-heading .text-button {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.overview-main .overview-empty {
+  padding: 6px 20px 20px;
+  gap: 8px;
+  justify-items: stretch;
+  text-align: left;
+}
+.overview-main .overview-empty h3 {
+  font-size: 12px;
+  font-weight: 400;
+  color: #737373;
+}
+.overview-main .overview-empty p {
+  font-size: 11px;
+}
+.overview-main .overview-next-bookings {
+  width: 100%;
+  margin-top: 4px;
+  gap: 6px;
+}
+.overview-main .overview-next-bookings button {
+  padding: 10px 12px;
+}
+@media (max-width: 600px) {
+  .overview-day-heading {
+    padding: 12px;
+    gap: 8px;
+  }
+  .overview-day-heading h3 {
+    font-size: 11px;
+    gap: 5px;
+  }
+  .overview-day-heading .text-button {
+    font-size: 10px;
+  }
+  .overview-main .overview-empty {
+    padding: 4px 12px 14px;
   }
 }

@@ -320,7 +320,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     (b) => b.date >= overviewWeekStart && b.date <= overviewWeekEnd && b.status !== 'Cancelled',
   )
   const nextOverviewBookings = overviewWeekBookings
-    .filter((b) => b.date > overviewDate && b.date >= today && !['Completed', 'In progress'].includes(b.status))
+    .filter(
+      (b) =>
+        b.date > overviewDate &&
+        b.date >= today &&
+        !['Completed', 'In progress'].includes(b.status),
+    )
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 3)
 
@@ -816,13 +821,15 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             )}
             {page === 'Overview' && (
               <div className="overview-workspace">
-                <div className="overview-main">
-                  <section className="card overview-week" aria-label="Week overview">
+                <section className="card overview-main" aria-label="Schedule overview">
+                  <section className="overview-week" aria-label="Week overview">
                     <header className="overview-week-heading">
                       <div>
                         <h2>
-                          Week overview{' '}
-                          <span className="count-pill">{overviewWeekBookings.length}</span>
+                          Schedule{' '}
+                          <span className="count-pill" title="Bookings this week">
+                            {overviewWeekBookings.length}
+                          </span>
                         </h2>
                         <p>{calendarRangeLabel(overviewWeekStart, overviewWeekEnd)}</p>
                       </div>
@@ -871,40 +878,30 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                       })}
                     </div>
                   </section>
-                  <section className="card overview-schedule" aria-label="Selected day's schedule">
-                    <div className="section-heading">
-                      <div>
-                        <h2>
-                          {overviewDate === today
-                            ? "Today's schedule"
-                            : dayLabel(overviewDate, {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'short',
-                              })}{' '}
-                          <span className="count-pill">{overviewBookings.length}</span>
-                        </h2>
-                        <p className="overview-schedule-date">
-                          {dayLabel(overviewDate)} · Europe/Zurich
-                        </p>
-                      </div>
-                      {overviewBookings.length > 0 && (
-                        <button
-                          className="text-button"
-                          onClick={() => {
-                            navigate('Bookings')
-                            setDate(overviewDate)
-                          }}
-                        >
-                          All bookings <ArrowRight size={14} />
-                        </button>
-                      )}
+                  <section className="overview-schedule" aria-label="Selected day's schedule">
+                    <div className="overview-day-heading">
+                      <h3>
+                        {overviewDate === today
+                          ? 'Today'
+                          : dayLabel(overviewDate, { weekday: 'long' })}{' '}
+                        · {dayLabel(overviewDate)}{' '}
+                        <span className="count-pill">{overviewBookings.length}</span>
+                      </h3>
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          navigate('Bookings')
+                          setView('Calendar')
+                          setDate(overviewDate)
+                        }}
+                      >
+                        Open calendar <ArrowRight size={14} />
+                      </button>
                     </div>
                     {overviewBookings.length ? (
                       bookingRows(overviewBookings)
                     ) : (
                       <div className="overview-empty">
-                        <CalendarDays size={24} aria-hidden="true" />
                         <h3>
                           {overviewDate === today ? 'No bookings today' : 'No bookings on this day'}
                         </h3>
@@ -937,16 +934,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                             ))}
                           </div>
                         )}
-                        <button
-                          className="btn"
-                          onClick={() => {
-                            navigate('Bookings')
-                            setView('Calendar')
-                            setDate(overviewDate)
-                          }}
-                        >
-                          Open calendar <ArrowRight size={14} />
-                        </button>
                       </div>
                     )}
                     {overviewBookings.length > 0 && (
@@ -959,7 +946,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                       </div>
                     )}
                   </section>
-                </div>
+                </section>
                 <aside className="overview-sidebar" aria-label="Day summary and actions">
                   <section className="card overview-summary" aria-label="Day summary">
                     <h2>
