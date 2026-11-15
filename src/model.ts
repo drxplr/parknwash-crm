@@ -93,7 +93,14 @@ export interface WorkTime {
   minutes: number
   updatedAt: string
 }
+export interface BookingWorkTime {
+  bookingId: string
+  minutes: number
+  source: 'planned' | 'manual'
+  updatedAt: string
+}
 export interface Store {
+  bookingWorkTime?: BookingWorkTime[]
   workTime?: WorkTime[]
   importedBookings?: ImportedBooking[]
   teamAccounts?: { userId: string; email: string; accessRole?: 'admin' | 'editor' | 'viewer' }[]

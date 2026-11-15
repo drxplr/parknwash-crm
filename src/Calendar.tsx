@@ -180,7 +180,7 @@ export function ScheduleCalendar({
                     .map((id) => store.settings.staff.find((s) => s.id === id)?.name)
                     .join(', ')
                   const actual = b.live ? bookingWorkTime(store, b.live.id, b.staffIds) : null
-                  const hoursLabel = `Plan: ${b.durationKnown ? formatWorkTime(b.duration) : 'unknown'}; actual: ${actual?.entered ? formatWorkTime(actual.minutes) + (actual.missing ? ' (partial)' : '') : 'not entered'}`
+                  const hoursLabel = `Plan: ${b.durationKnown ? formatWorkTime(b.duration) : 'unknown'}; ${actual?.source === 'planned' ? 'from plan' : 'actual'}: ${actual?.entered ? formatWorkTime(actual.minutes) + (actual.missing ? ' (partial)' : '') : 'not entered'}`
                   const label = `${hoursLabel}. ${b.time}, ${c.name}, ${b.vehicleLabel}, ${b.service}, ${b.status}, ${teamName || 'Unassigned'}${b.imported ? ', Imported from vcita, read only' : ''}${!b.durationKnown ? ', duration not recorded' : ''}`
                   return (
                     <button

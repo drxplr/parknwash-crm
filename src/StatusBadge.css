@@ -1,0 +1,70 @@
+.app-shell .state-badge,
+.app-shell .payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #525252;
+  background: #f0f0f0;
+}
+.state-badge > span {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.app-shell .state-confirmed,
+.app-shell .state-active {
+  color: #0055d4;
+  background: #eaf1ff;
+}
+.app-shell .state-in-progress {
+  color: #6d28d9;
+  background: #f2ecff;
+}
+.app-shell .state-pending,
+.app-shell .payment-unpaid,
+.app-shell .payment-partial {
+  color: #92400e;
+  background: #fff3db;
+}
+.app-shell .state-completed,
+.app-shell .payment-paid {
+  color: #166534;
+  background: #e9f7ed;
+}
+.app-shell .state-cancelled,
+.app-shell .state-rejected,
+.app-shell .state-no-show {
+  color: #b91c1c;
+  background: #fdebeb;
+}
+.app-shell .payment-refunded {
+  color: #6d28d9;
+  background: #f2ecff;
+}
+.booking-state-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #0066ff;
+}
+.booking-state-dot.state-past {
+  background: #737373;
+}
+.booking-state-dot.state-cancelled {
+  background: #dc2626;
+}
+.schedule-event.muted-event .event-state.completed {
+  background: #16a34a !important;
+}
+.schedule-event.muted-event .event-state:is(.cancelled, .rejected, .no-show) {
+  background: #dc2626 !important;
+}

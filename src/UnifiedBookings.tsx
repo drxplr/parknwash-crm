@@ -1,3 +1,4 @@
+import { StatusBadge, PaymentBadge } from './StatusBadge'
 import { ActualTimeLabel } from './WorkTime'
 import { formatWorkTime } from './workTimeModel'
 import { useRef, useState } from 'react'
@@ -60,7 +61,9 @@ export function ImportedVisitDetails({
         </div>
         <div>
           <dt>Payment in vcita</dt>
-          <dd>{b.paymentStatus ?? 'Not recorded'}</dd>
+          <dd>
+            <PaymentBadge label={b.paymentStatus ?? 'Not recorded'} />
+          </dd>
         </div>
         <div>
           <dt>Amount paid</dt>
@@ -237,16 +240,12 @@ export function UnifiedBookingList({
                 )}
               </td>
               <td>
-                <span
-                  className={`unified-status status-${b.status.toLowerCase().replaceAll(' ', '-')}`}
-                >
-                  {b.status}
-                </span>
+                <StatusBadge status={b.status} />
               </td>
               <td className="align-right">
                 {entryMoney(b)}
                 <span className="sub">
-                  {b.payment}
+                  <PaymentBadge label={b.payment} />
                   {b.imported ? ' · vcita' : ''}
                 </span>
               </td>
@@ -284,6 +283,7 @@ export function UnifiedBookingList({
                     setPagination({ scope: '', page: 1 })
                   }}
                 >
+                  <i className={`booking-state-dot state-${g.key}`} aria-hidden="true" />
                   {g.label}
                   <span className="count-pill">{g.rows.length}</span>
                 </button>

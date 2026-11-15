@@ -1,3 +1,4 @@
+import { StatusBadge, PaymentBadge } from './StatusBadge'
 import { WorkTimeEditor, WorkTimeSummary } from './WorkTime'
 import type { WorkTimeSave } from './workTimeModel'
 import { BookingCustomerSearch } from './BookingCustomerSearch'
@@ -79,15 +80,10 @@ const initials = (name: string) =>
     .map((n) => n[0])
     .slice(0, 2)
     .join('')
-const statusClass = (s: string) => s.toLowerCase().replaceAll(' ', '-')
 function Badge({ status }: { status: Status }) {
-  return (
-    <span className={`badge ${statusClass(status)}`}>
-      <span className="status-dot" />
-      {status}
-    </span>
-  )
+  return <StatusBadge status={status} />
 }
+
 function Avatar({
   name,
   small = false,
@@ -208,7 +204,7 @@ function Dialog({
 export interface CloudMode {
   whatsapp?: WhatsAppTestApi
   washerStaffId?: string
-  saveWorkTime: (id: string, staffId: string, minutes: number | null) => Promise<Store>
+  saveWorkTime: (id: string, minutes: number | null) => Promise<Store>
   washStatus: (id: string, status: 'In progress' | 'Completed') => Promise<Store>
   initial: Store
   role: 'admin' | 'editor' | 'viewer'
@@ -218,18 +214,25 @@ export interface CloudMode {
   signOut: () => void
 }
 export default function App({ cloud }: { cloud?: CloudMode }) {
-  const saveActualTime: WorkTimeSave = async (id, staffId, minutes) => {
+  const saveActualTime: WorkTimeSave = async (id, minutes) => {
     if (cloud) {
-      setLocalStore(await cloud.saveWorkTime(id, staffId, minutes))
+      setLocalStore(await cloud.saveWorkTime(id, minutes))
       return
     }
     setStore((s) => ({
       ...s,
-      workTime: [
-        ...(s.workTime ?? []).filter((t) => t.bookingId !== id || t.staffId !== staffId),
+      bookingWorkTime: [
+        ...(s.bookingWorkTime ?? []).filter((t) => t.bookingId !== id),
         ...(minutes == null
           ? []
-          : [{ bookingId: id, staffId, minutes, updatedAt: new Date().toISOString() }]),
+          : [
+              {
+                bookingId: id,
+                minutes,
+                source: 'manual' as const,
+                updatedAt: new Date().toISOString(),
+              },
+            ]),
       ],
     }))
   }
@@ -274,7 +277,28 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     if (busy.current) return
     const next = typeof update === 'function' ? update(store) : update
     if (!cloud) {
-      setLocalStore(next)
+      const completed = next.bookings.filter(
+        (b) =>
+          b.status === 'Completed' &&
+          store.bookings.find((old) => old.id === b.id)?.status !== 'Completed' &&
+          !next.bookingWorkTime?.some((t) => t.bookingId === b.id),
+      )
+      setLocalStore(
+        completed.length
+          ? {
+              ...next,
+              bookingWorkTime: [
+                ...(next.bookingWorkTime ?? []),
+                ...completed.map((b) => ({
+                  bookingId: b.id,
+                  minutes: b.duration,
+                  source: 'planned' as const,
+                  updatedAt: new Date().toISOString(),
+                })),
+              ],
+            }
+          : next,
+      )
       return
     }
     if (cloud.role === 'viewer') {
@@ -578,8 +602,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               </td>
               <td className="align-right amount">
                 {money(b.price)}
-                <span className={`sub ${b.paid ? 'text-green' : ''}`}>
-                  {b.paid ? 'Paid' : 'Unpaid'}
+                <span className="sub">
+                  <PaymentBadge label={b.paid ? 'Paid' : 'Unpaid'} />
                 </span>
               </td>
               <td>
@@ -2380,7 +2404,9 @@ function BookingDetail({
       <div className="detail-section payment-row">
         <div>
           <h3>Payment</h3>
-          <p>{b.paid ? 'Payment received' : 'Awaiting payment'}</p>
+          <p>
+            <PaymentBadge label={b.paid ? 'Paid' : 'Unpaid'} />
+          </p>
         </div>
         <strong>{money(b.price)}</strong>
         <button className="btn small-btn" onClick={() => onUpdate({ paid: !b.paid })}>

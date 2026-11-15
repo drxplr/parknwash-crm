@@ -1,3 +1,4 @@
+import { StatusBadge } from './StatusBadge'
 import { WorkTimeEditor } from './WorkTime'
 import type { WorkTimeSave } from './workTimeModel'
 import { useState } from 'react'
@@ -106,7 +107,7 @@ export function WasherWorkspace({
                   <CalendarDays size={15} />
                   {dayLabel(b.date)} · {b.time}
                 </span>
-                <span>{b.status}</span>
+                <StatusBadge status={b.status} />
               </div>
               <h2>
                 {v?.model ?? 'Vehicle'} <small>{v ? sizeLabels[v.size] : ''}</small>
@@ -141,7 +142,7 @@ export function WasherWorkspace({
                   {busy === b.id ? 'Saving…' : 'Complete wash'}
                 </button>
               )}
-              <WorkTimeEditor booking={b} store={store} staffId={staffId} onSave={onSaveTime} />
+              <WorkTimeEditor booking={b} store={store} onSave={onSaveTime} />
               {b.status === 'Pending' && <small>Waiting for manager confirmation</small>}
             </article>
           )

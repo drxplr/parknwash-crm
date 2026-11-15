@@ -332,15 +332,14 @@ export default function CloudApp() {
     setSnapshot(next)
     return snapshotToStore(next)
   }
-  async function saveWorkTime(id: string, staffId: string, minutes: number | null): Promise<Store> {
+  async function saveWorkTime(id: string, minutes: number | null): Promise<Store> {
     const base = snapshotRef.current
     if (!client || !session || !base || activeUser.current !== session.user.id)
       throw new Error('Sign in again.')
     const seq = sequence.current
-    const { error } = await client.rpc('crm_save_work_time', {
+    const { error } = await client.rpc('crm_save_booking_work_time', {
       ws: base.workspace.id,
       job: id,
-      member: staffId,
       actual_minutes: minutes,
       expected_revision: base.workspace.revision,
     })
@@ -399,8 +398,8 @@ export default function CloudApp() {
         onStatus={async (id, status) => {
           await washStatus(id, status)
         }}
-        onSaveTime={async (id, member, minutes) => {
-          await saveWorkTime(id, member, minutes)
+        onSaveTime={async (id, minutes) => {
+          await saveWorkTime(id, minutes)
         }}
         onReload={load}
         onSignOut={() => void signOut()}
