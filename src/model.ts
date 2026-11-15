@@ -87,7 +87,14 @@ export interface Activity {
   kind: 'note' | 'booking' | 'message' | 'payment'
   author: string
 }
+export interface WorkTime {
+  bookingId: string
+  staffId: string
+  minutes: number
+  updatedAt: string
+}
 export interface Store {
+  workTime?: WorkTime[]
   importedBookings?: ImportedBooking[]
   teamAccounts?: { userId: string; email: string; accessRole?: 'admin' | 'editor' | 'viewer' }[]
   customers: Customer[]

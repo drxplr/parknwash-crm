@@ -1,0 +1,152 @@
+.work-time-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #737373;
+  font-variant-numeric: tabular-nums;
+}
+.work-time-summary strong {
+  color: #171717;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.work-time-summary small {
+  font-size: 11px;
+}
+.work-time-editor {
+  background: #f5f5f5;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 16px 0;
+  color: #171717;
+}
+.work-time-editor header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.work-time-editor h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  margin: 0;
+  font-weight: 600;
+}
+.work-time-editor header > span {
+  font-size: 12px;
+  color: #737373;
+}
+.work-time-total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.work-time-total strong {
+  font-weight: 600;
+}
+.work-time-total > span {
+  margin-left: auto;
+}
+.work-time-hint {
+  font-size: 12px;
+  color: #737373;
+  margin: 10px 0;
+}
+.work-time-person {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #e5e5e5;
+  font-size: 13px;
+}
+.work-time-name {
+  flex: 1 1 120px;
+  font-weight: 500;
+}
+.work-time-person label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #737373;
+}
+.work-time-person input {
+  width: 86px !important;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #171717;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.work-time-person input:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+.work-time-person input[readonly] {
+  background: transparent;
+}
+.work-time-person .btn {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.work-time-person .form-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.work-time-formatted {
+  min-width: 72px;
+  color: #737373;
+  font-size: 12px;
+}
+.work-time-label {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.unified-booking-context + .work-time-summary {
+  margin: 0 20px 12px;
+}
+.overview-summary .work-time-summary {
+  padding: 12px;
+  margin-top: 14px;
+  gap: 10px;
+}
+.overview-summary .work-time-summary > svg {
+  display: none;
+}
+.overview-summary .work-time-summary > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .work-time-summary {
+    gap: 8px 12px;
+  }
+  .work-time-person {
+    gap: 8px;
+  }
+  .work-time-formatted {
+    min-width: 60px;
+  }
+  .work-time-editor {
+    padding: 12px;
+  }
+}

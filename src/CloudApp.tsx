@@ -332,6 +332,25 @@ export default function CloudApp() {
     setSnapshot(next)
     return snapshotToStore(next)
   }
+  async function saveWorkTime(id: string, staffId: string, minutes: number | null): Promise<Store> {
+    const base = snapshotRef.current
+    if (!client || !session || !base || activeUser.current !== session.user.id)
+      throw new Error('Sign in again.')
+    const seq = sequence.current
+    const { error } = await client.rpc('crm_save_work_time', {
+      ws: base.workspace.id,
+      job: id,
+      member: staffId,
+      actual_minutes: minutes,
+      expected_revision: base.workspace.revision,
+    })
+    if (error) throw error
+    const next = await loadSnapshot(client, base.workspace.id)
+    if (seq !== sequence.current) throw new Error('Session changed. Sign in again.')
+    snapshotRef.current = next
+    setSnapshot(next)
+    return snapshotToStore(next)
+  }
   async function washStatus(id: string, status: 'In progress' | 'Completed'): Promise<Store> {
     const base = snapshotRef.current
     if (!client || !session || !base || activeUser.current !== session.user.id)
@@ -379,6 +398,9 @@ export default function CloudApp() {
         staffId={snapshot.staff_id}
         onStatus={async (id, status) => {
           await washStatus(id, status)
+        }}
+        onSaveTime={async (id, member, minutes) => {
+          await saveWorkTime(id, member, minutes)
         }}
         onReload={load}
         onSignOut={() => void signOut()}
@@ -439,6 +461,7 @@ export default function CloudApp() {
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,
             washerStaffId: snapshot.is_washer ? (snapshot.staff_id ?? undefined) : undefined,
             washStatus,
+            saveWorkTime,
             label: session.user.email?.split('@')[0] ?? 'Team',
             commit,
             reload: load,

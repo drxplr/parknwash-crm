@@ -1,3 +1,5 @@
+import { WorkTimeEditor } from './WorkTime'
+import type { WorkTimeSave } from './workTimeModel'
 import { useState } from 'react'
 import { CalendarDays, MapPin, RefreshCw, LogOut } from 'lucide-react'
 import { PageHeader } from './PageHeader'
@@ -9,12 +11,14 @@ export function WasherWorkspace({
   store,
   staffId,
   onStatus,
+  onSaveTime,
   onReload,
   onSignOut,
   embedded = false,
 }: {
   store: Store
   staffId: string
+  onSaveTime?: WorkTimeSave
   onStatus: (id: string, status: 'In progress' | 'Completed') => Promise<void>
   onReload?: () => Promise<void>
   onSignOut?: () => void
@@ -137,6 +141,7 @@ export function WasherWorkspace({
                   {busy === b.id ? 'Saving…' : 'Complete wash'}
                 </button>
               )}
+              <WorkTimeEditor booking={b} store={store} staffId={staffId} onSave={onSaveTime} />
               {b.status === 'Pending' && <small>Waiting for manager confirmation</small>}
             </article>
           )

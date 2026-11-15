@@ -4,6 +4,7 @@ import { swissInstant } from './model'
 
 type Row = Record<string, unknown>
 export interface Snapshot {
+  work_time?: Row[]
   imported_bookings?: Row[]
   workspace: Row & { id: string; revision: number }
   role: 'admin' | 'editor' | 'viewer'
@@ -52,6 +53,12 @@ const localParts = (iso: string) => {
 export function snapshotToStore(s: Snapshot): Store {
   const region = (id: unknown) => s.regions.find((r) => r.id === id)?.name as Region | undefined
   return {
+    workTime: (s.work_time ?? []).map((t) => ({
+      bookingId: str(t, 'booking_id'),
+      staffId: str(t, 'staff_id'),
+      minutes: number(t, 'minutes'),
+      updatedAt: str(t, 'updated_at'),
+    })),
     importedBookings: (s.imported_bookings ?? []).map((b) => ({
       id: str(b, 'id'),
       customerId: str(b, 'customer_id'),

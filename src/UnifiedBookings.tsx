@@ -1,3 +1,5 @@
+import { ActualTimeLabel } from './WorkTime'
+import { formatWorkTime } from './workTimeModel'
 import { useState } from 'react'
 import { ChevronRight, X } from 'lucide-react'
 import { RegionBadge } from './RegionBadge'
@@ -114,6 +116,7 @@ export function UnifiedBookingList({
             <th>Date & time</th>
             <th>Customer / vehicle</th>
             <th>Service</th>
+            <th>Work time</th>
             <th>Team</th>
             <th>Status</th>
             <th className="align-right">Amount</th>
@@ -159,6 +162,12 @@ export function UnifiedBookingList({
                   <RegionBadge region={b.region ?? 'Unassigned'} />
                   {b.imported && <span className="unified-source">Imported · read only</span>}
                 </span>
+              </td>
+              <td>
+                <span>
+                  {b.durationKnown ? `${formatWorkTime(b.duration)} planned` : 'Plan unknown'}
+                </span>
+                <ActualTimeLabel store={store} bookingId={b.live?.id} assigned={b.staffIds} />
               </td>
               <td>
                 {b.staffIds.length ? (

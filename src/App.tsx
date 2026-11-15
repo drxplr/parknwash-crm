@@ -1,3 +1,5 @@
+import { WorkTimeEditor, WorkTimeSummary } from './WorkTime'
+import type { WorkTimeSave } from './workTimeModel'
 import { BookingCustomerSearch } from './BookingCustomerSearch'
 import './Overview.css'
 import { WasherWorkspace } from './WasherWorkspace'
@@ -206,6 +208,7 @@ function Dialog({
 export interface CloudMode {
   whatsapp?: WhatsAppTestApi
   washerStaffId?: string
+  saveWorkTime: (id: string, staffId: string, minutes: number | null) => Promise<Store>
   washStatus: (id: string, status: 'In progress' | 'Completed') => Promise<Store>
   initial: Store
   role: 'admin' | 'editor' | 'viewer'
@@ -215,6 +218,21 @@ export interface CloudMode {
   signOut: () => void
 }
 export default function App({ cloud }: { cloud?: CloudMode }) {
+  const saveActualTime: WorkTimeSave = async (id, staffId, minutes) => {
+    if (cloud) {
+      setLocalStore(await cloud.saveWorkTime(id, staffId, minutes))
+      return
+    }
+    setStore((s) => ({
+      ...s,
+      workTime: [
+        ...(s.workTime ?? []).filter((t) => t.bookingId !== id || t.staffId !== staffId),
+        ...(minutes == null
+          ? []
+          : [{ bookingId: id, staffId, minutes, updatedAt: new Date().toISOString() }]),
+      ],
+    }))
+  }
   const today = cloud ? swissToday() : DEMO_DATE
   const [store, setLocalStore] = useState<Store>(() => cloud?.initial ?? loadStore()),
     [page, setPage] = useState<Page>('Bookings'),
@@ -1000,6 +1018,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         </dd>
                       </div>
                     </dl>
+                    <WorkTimeSummary bookings={overviewBookings} store={store} />
                   </section>
                   {pending.length > 0 && (
                     <section
@@ -1149,6 +1168,15 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
 
                     {!cloud && <span className="demo-label">Fictional demo bookings</span>}
                   </div>
+                  <WorkTimeSummary
+                    bookings={visibleBookings.map((b) => ({
+                      id: b.live?.id ?? b.id,
+                      duration: b.durationKnown ? b.duration : 0,
+                      staffIds: b.staffIds,
+                      status: b.status,
+                    }))}
+                    store={store}
+                  />
                   {(status !== 'All statuses' ||
                     region !== 'All regions' ||
                     staffFilter !== 'All staff') && (
@@ -1582,6 +1610,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 embedded
                 store={store}
                 staffId={myStaffId}
+                onSaveTime={saveActualTime}
                 onStatus={async (id, status) => {
                   if (cloud) {
                     setLocalStore(await cloud.washStatus(id, status))
@@ -1642,6 +1671,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     return (
                       <BookingDetail
                         booking={b}
+                        store={store}
+                        onSaveTime={cloud?.role === 'viewer' ? undefined : saveActualTime}
                         staff={staff}
                         vehicle={v}
                         customer={c}
@@ -2133,6 +2164,8 @@ function Profile({
 }
 function BookingDetail({
   booking: b,
+  store,
+  onSaveTime,
   staff,
   vehicle: v,
   customer: c,
@@ -2141,6 +2174,8 @@ function BookingDetail({
   openVehicle,
 }: {
   booking: Booking
+  store: Store
+  onSaveTime?: WorkTimeSave
   staff: Store['settings']['staff']
   vehicle: Vehicle
   customer: Customer
@@ -2194,6 +2229,7 @@ function BookingDetail({
           </span>
         </div>
       </div>
+      <WorkTimeEditor booking={b} store={store} onSave={onSaveTime} />
       <details className="detail-section">
         <summary>
           <span>Reschedule</span>
