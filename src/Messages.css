@@ -1,0 +1,106 @@
+/* Messages owns these styles; it must not depend on the archived-history screen. */
+.messages-workspace .messaging-readiness {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0 20px 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f5f5f5;
+  color: #171717;
+  font-size: 12px;
+}
+.messages-workspace .messaging-readiness-heading,
+.messages-workspace .messaging-readiness-heading strong {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.messages-workspace .messaging-readiness-heading strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.messages-workspace .messaging-test-mode {
+  color: #525252;
+  background: #e9e9e9;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.messages-workspace .messaging-readiness dl {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px 24px;
+  margin: 0;
+}
+.messages-workspace .messaging-readiness dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.messages-workspace .messaging-readiness dt {
+  color: #737373;
+}
+.messages-workspace .messaging-readiness dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.messages-workspace .messaging-readiness p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #737373;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.messages-workspace .listing-toolbar {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.messages-workspace .selection-tabs {
+  flex-wrap: wrap;
+}
+.messages-workspace .messages-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  text-align: center;
+  border-top: 1px solid #ededed;
+}
+.messages-workspace .messages-empty > svg {
+  color: #a3a3a3;
+}
+.messages-workspace .messages-empty h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #171717;
+}
+.messages-workspace .messages-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #737373;
+}
+.messages-workspace .settings-section > .messages-empty {
+  border: 0;
+  padding: 16px 0;
+}
+@media (max-width: 650px) {
+  .messages-workspace .messaging-readiness {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 12px 12px;
+    padding: 12px;
+    gap: 12px;
+  }
+  .messages-workspace .messaging-readiness dl {
+    justify-content: flex-start;
+    gap: 10px 20px;
+  }
+}

@@ -1,10 +1,21 @@
+import './Messages.css'
 import { RegionBadge } from './RegionBadge'
 import { teamRoleLabels, teamRolesLabel } from './teamRoles'
 import { WhatsAppTest } from './WhatsAppTest'
 import type { WhatsAppTestApi } from './WhatsAppTest'
 import type { Staff, TeamRole } from './model'
 import { websitePackages, websiteServices } from './websiteCatalog'
-import { Info, Package, Users, MapPin, Bell, Plus, Check, MessageSquare, ChevronDown } from 'lucide-react'
+import {
+  Info,
+  Package,
+  Users,
+  MapPin,
+  Bell,
+  Plus,
+  Check,
+  MessageSquare,
+  ChevronDown,
+} from 'lucide-react'
 import { Select } from './Select'
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -84,12 +95,13 @@ export function Messages({
     setSelected(null)
   }
   return (
-    <section className="operations">
+    <section className="operations messages-workspace">
       <div className="listing-toolbar">
-        <div className="tabs selection-tabs">
+        <div className="tabs selection-tabs" role="group" aria-label="Message views">
           {['Queue', 'Manual follow-up', 'Sent'].map((t) => (
             <button
               key={t}
+              aria-pressed={tab === t}
               className={tab === t ? 'selected' : ''}
               onClick={() => {
                 setTab(t)
@@ -97,19 +109,33 @@ export function Messages({
               }}
             >
               {t}
-              {t === 'Queue' ? ` · ${queue.length}` : t === 'Sent' ? ` · ${sent.length}` : ''}
+              {t !== 'Manual follow-up' && (
+                <span className="count-pill">{t === 'Queue' ? queue.length : sent.length}</span>
+              )}
             </button>
           ))}
         </div>
       </div>
       {live && (
         <div className="messaging-readiness" aria-label="WhatsApp readiness">
-          <strong>WhatsApp readiness</strong>
-          <span>{reachable.length} reachable contacts</span>
-          <span>{optedIn.length} opted in for wash reminders</span>
-          <p>
-            Booking confirmations and reminders are prepared below. Cloud API tests go only to the verified test number; customer automation is off.
-          </p>
+          <div className="messaging-readiness-heading">
+            <strong>
+              <MessageSquare size={15} aria-hidden="true" />
+              WhatsApp
+            </strong>
+            <span className="messaging-test-mode">Test mode</span>
+          </div>
+          <dl>
+            <div>
+              <dt>Reachable contacts</dt>
+              <dd>{reachable.length}</dd>
+            </div>
+            <div>
+              <dt>Wash reminder opt-ins</dt>
+              <dd>{optedIn.length}</dd>
+            </div>
+          </dl>
+          <p>Customer automation is off. API tests go only to the verified test number.</p>
         </div>
       )}
       <details className="inline-help">
@@ -118,45 +144,57 @@ export function Messages({
           <span>Reminder rules</span>
         </summary>
         <p>
-          Confirmations follow confirmed bookings; appointment reminders use the configured lead time. Pending and cancelled bookings do not trigger appointment messages. Wash reminders pause for customers with upcoming bookings.{' '}
+          Confirmations follow confirmed bookings; appointment reminders use the configured lead
+          time. Pending and cancelled bookings do not trigger appointment messages. Wash reminders
+          pause for customers with upcoming bookings.{' '}
           {live
             ? 'Current Swiss time. Wash reminders require an opt-in.'
             : `Demo: ${DEMO_DATE}, 08:00 Zurich.`}
         </p>
       </details>
-      {tab === 'Queue' && (
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Reminder</th>
-                <th>When</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map((r) => (
-                <tr key={r.key}>
-                  <td>
-                    <button className="cell-link" onClick={() => openCustomer(r.customerId)}>
-                      {store.customers.find((c) => c.id === r.customerId)!.name}
-                    </button>
-                  </td>
-                  <td>{r.type}</td>
-                  <td>{r.reason}</td>
-                  <td>
-                    <button className="btn small-btn" onClick={() => select(r)}>
-                      Prepare message
-                    </button>
-                  </td>
+      {tab === 'Queue' &&
+        (queue.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Reminder</th>
+                  <th>When</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {!queue.length && <p className="operation-caption">{live && !optedIn.length ? 'No booking messages due. Wash reminders require customer opt-in.' : 'All caught up.'}</p>}
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {queue.map((r) => (
+                  <tr key={r.key}>
+                    <td>
+                      <button className="cell-link" onClick={() => openCustomer(r.customerId)}>
+                        {store.customers.find((c) => c.id === r.customerId)!.name}
+                      </button>
+                    </td>
+                    <td>{r.type}</td>
+                    <td>{r.reason}</td>
+                    <td>
+                      <button className="btn small-btn" onClick={() => select(r)}>
+                        Prepare message
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="messages-empty">
+            <MessageSquare size={22} aria-hidden="true" />
+            <h3>No messages due</h3>
+            <p>
+              {live && !optedIn.length
+                ? 'Wash reminders require customer opt-in.'
+                : 'Your queue is up to date.'}
+            </p>
+          </div>
+        ))}
       {tab === 'Manual follow-up' && (
         <div className="settings-section">
           <label className="field">
@@ -201,7 +239,13 @@ export function Messages({
               <small>Manually marked sent · {new Date(m.at).toLocaleString('en-GB')}</small>
             </article>
           ))}
-          {!sent.length && <p>No messages marked sent yet.</p>}
+          {!sent.length && (
+            <div className="messages-empty">
+              <MessageSquare size={22} aria-hidden="true" />
+              <h3>No messages marked sent</h3>
+              <p>Messages appear here after you mark them as sent.</p>
+            </div>
+          )}
         </div>
       )}
       {selected && (
@@ -222,7 +266,12 @@ export function Messages({
             <textarea required value={text} onChange={(e) => setText(e.target.value)} />
           </label>
           <p className="muted">Mark as sent only after sending in WhatsApp.</p>
-          {!currentDraft && <p role="alert" className="form-error">This appointment changed. Close this draft and prepare the current message from the queue.</p>}
+          {!currentDraft && (
+            <p role="alert" className="form-error">
+              This appointment changed. Close this draft and prepare the current message from the
+              queue.
+            </p>
+          )}
           <div className="action-row">
             {currentDraft && whatsappLink(phone, text) ? (
               <a className="btn" href={whatsappLink(phone, text)!} target="_blank" rel="noreferrer">
@@ -231,7 +280,9 @@ export function Messages({
             ) : (
               <span className="muted">Add a number to open WhatsApp.</span>
             )}
-            <button className="btn primary" disabled={!currentDraft}>Mark as sent</button>
+            <button className="btn primary" disabled={!currentDraft}>
+              Mark as sent
+            </button>
             <button type="button" className="btn" onClick={() => setSelected(null)}>
               Cancel
             </button>

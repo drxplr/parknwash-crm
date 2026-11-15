@@ -114,9 +114,15 @@
   border-radius: 12px;
 }
 .overview-team > summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto 14px;
   align-items: center;
+  justify-content: start;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border-radius: inherit;
   padding: 16px 18px;
   font-size: 13px;
   cursor: pointer;
@@ -131,7 +137,17 @@
   display: none;
 }
 .overview-team > summary .count-pill {
-  margin-left: auto;
+  margin: 0;
+  justify-self: end;
+}
+.overview-team > summary > svg {
+  display: block;
+}
+.overview-team > summary > span:not(.count-pill) {
+  min-width: 0;
+}
+.overview-team[open] > summary {
+  border-radius: 20px 20px 0 0;
 }
 .overview-team[open] > summary > svg:last-child {
   transform: rotate(180deg);
