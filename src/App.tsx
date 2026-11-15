@@ -1216,6 +1216,12 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     <UnifiedBookingList
                       entries={visibleBookings}
                       grouped
+                      rangeNavigation={{
+                        label: calendarRangeLabel(rangeStart, rangeEnd),
+                        unit: range === 'Week' ? 'week' : 'day',
+                        onPrevious: () => setDate(addDays(date, range === 'Week' ? -7 : -1)),
+                        onNext: () => setDate(addDays(date, range === 'Week' ? 7 : 1)),
+                      }}
                       today={today}
                       store={store}
                       onOpenLive={(id) => setDetail({ kind: 'booking', id })}

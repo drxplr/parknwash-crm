@@ -1,7 +1,7 @@
 import { ActualTimeLabel } from './WorkTime'
 import { formatWorkTime } from './workTimeModel'
-import { useState } from 'react'
-import { ChevronRight, X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { RegionBadge } from './RegionBadge'
 import { Select } from './Select'
 import { dayLabel, swissToday } from './model'
@@ -81,12 +81,14 @@ export function UnifiedBookingList({
   entries,
   store,
   grouped = false,
+  rangeNavigation,
   today = swissToday(),
   onOpenLive,
   onOpenImported,
   onCustomer,
 }: {
   entries: BookingEntry[]
+  rangeNavigation?: { label: string; unit: string; onPrevious: () => void; onNext: () => void }
   grouped?: boolean
   today?: string
   store: Store
@@ -96,14 +98,67 @@ export function UnifiedBookingList({
 }) {
   const [selected, setSelected] = useState<ImportedBooking | null>(null)
   const [sort, setSort] = useState('newest')
+  const [bucket, setBucket] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
+  const [pagination, setPagination] = useState({ scope: '', page: 1 })
+  const listTop = useRef<HTMLDivElement>(null)
   const sorted = sortBookingEntries(entries, sort)
   const groups = [
-    { key: 'upcoming' as const, label: 'Upcoming & active' },
-    { key: 'past' as const, label: 'Past & completed' },
-    { key: 'cancelled' as const, label: 'Cancelled & no-shows' },
-  ]
-    .map((g) => ({ ...g, rows: sorted.filter((b) => bookingBucket(b, today) === g.key) }))
-    .filter((g) => g.rows.length)
+    { key: 'upcoming' as const, label: 'Active' },
+    { key: 'past' as const, label: 'Past' },
+    { key: 'cancelled' as const, label: 'Cancelled' },
+  ].map((g) => ({ ...g, rows: sorted.filter((b) => bookingBucket(b, today) === g.key) }))
+
+  const current = groups.find((g) => g.key === bucket)!
+  const pageSize = 25
+  const scope = `${bucket}:${sort}:${rangeNavigation?.label ?? ''}:${entries.map((b) => `${b.id}/${b.date}/${b.status}`).join('|')}`
+  const pages = Math.max(1, Math.ceil(current.rows.length / pageSize))
+  const page = pagination.scope === scope ? Math.min(pagination.page, pages) : 1
+  const rows = current.rows.slice((page - 1) * pageSize, page * pageSize)
+  function returnToList() {
+    listTop.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    listTop.current?.focus({ preventScroll: true })
+  }
+  function pageControls(position: 'top' | 'bottom') {
+    if (pages === 1) return null
+    return (
+      <nav
+        className="booking-list-pagination"
+        aria-label={`${position === 'top' ? 'Top' : 'Bottom'} booking pages`}
+      >
+        <span aria-live="polite">
+          {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, current.rows.length)} of{' '}
+          {current.rows.length}
+        </span>
+        <div>
+          <button
+            className="icon-btn"
+            aria-label="Previous bookings page"
+            disabled={page === 1}
+            onClick={() => {
+              setPagination({ scope, page: page - 1 })
+              if (position === 'bottom') returnToList()
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span>
+            Page {page} of {pages}
+          </span>
+          <button
+            className="icon-btn"
+            aria-label="Next bookings page"
+            disabled={page === pages}
+            onClick={() => {
+              setPagination({ scope, page: page + 1 })
+              if (position === 'bottom') returnToList()
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </nav>
+    )
+  }
   function open(b: BookingEntry) {
     if (b.live) onOpenLive(b.live.id)
     else if (b.imported) (onOpenImported ?? setSelected)(b.imported)
@@ -210,50 +265,88 @@ export function UnifiedBookingList({
     </div>
   )
   return (
-    <div className="unified-bookings">
+    <div className="unified-bookings" ref={listTop} tabIndex={-1} aria-label="Booking list">
       {selected && <ImportedVisitDetails booking={selected} onClose={() => setSelected(null)} />}
       {grouped ? (
         <>
           <div className="booking-list-sort">
-            <span>Grouped by booking state</span>
+            <div
+              className="selection-tabs booking-state-tabs"
+              role="group"
+              aria-label="Booking state"
+            >
+              {groups.map((g) => (
+                <button
+                  key={g.key}
+                  aria-pressed={bucket === g.key}
+                  onClick={() => {
+                    setBucket(g.key)
+                    setPagination({ scope: '', page: 1 })
+                  }}
+                >
+                  {g.label}
+                  <span className="count-pill">{g.rows.length}</span>
+                </button>
+              ))}
+            </div>
             <label>
               Sort{' '}
               <Select
                 aria-label="Sort bookings"
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
+                onChange={(e) => {
+                  setSort(e.target.value)
+                  setPagination({ scope: '', page: 1 })
+                }}
               >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
               </Select>
             </label>
           </div>
-          {groups.map((g) =>
-            g.key === 'upcoming' ? (
-              <section className="booking-list-group" key={g.key} aria-label={g.label}>
-                <h3>
-                  {g.label} <span className="count-pill">{g.rows.length}</span>
-                </h3>
-                {table(g.rows)}
-              </section>
+          {pageControls('top')}
+          <section className="booking-list-results" aria-label={`${current.label} bookings`}>
+            {rows.length ? (
+              table(rows)
             ) : (
-              <details
-                key={g.key}
-                className="booking-list-group"
-                open={g.key === 'past' || groups.length === 1}
+              <p className="booking-list-empty">
+                No {current.label.toLowerCase()} bookings in this period.
+              </p>
+            )}
+          </section>
+          {pageControls('bottom')}
+          {rangeNavigation && (
+            <nav className="booking-list-range" aria-label="Bottom date navigation">
+              <button
+                className="btn"
+                onClick={() => {
+                  rangeNavigation.onPrevious()
+                  returnToList()
+                }}
               >
-                <summary>
-                  {g.label} <span className="count-pill">{g.rows.length}</span>
-                </summary>
-                {table(g.rows)}
-              </details>
-            ),
+                <ChevronLeft size={16} />
+                Previous {rangeNavigation.unit}
+              </button>
+              <span>{rangeNavigation.label}</span>
+              <button
+                className="btn"
+                onClick={() => {
+                  rangeNavigation.onNext()
+                  returnToList()
+                }}
+              >
+                Next {rangeNavigation.unit}
+                <ChevronRight size={16} />
+              </button>
+            </nav>
           )}
         </>
       ) : (
         table(sorted)
       )}
-      {!entries.length && <p className="operation-caption">No bookings in this period.</p>}
+      {!grouped && !entries.length && (
+        <p className="operation-caption">No bookings in this period.</p>
+      )}
     </div>
   )
 }

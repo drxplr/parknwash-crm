@@ -163,41 +163,74 @@
   padding: 6px 10px;
   font-size: 11px;
 }
-.booking-list-group {
+.app-shell .booking-state-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.booking-list-sort {
+  flex-wrap: wrap;
+}
+.booking-list-sort > label {
+  margin-left: auto;
+}
+.booking-list-results {
   border-top: 1px solid #ededed;
 }
-.booking-list-group h3,
-.booking-list-group > summary {
+.booking-list-empty {
+  margin: 0;
+  padding: 40px 18px;
+  color: #737373;
+  font-size: 13px;
+  text-align: center;
+}
+.booking-list-pagination,
+.booking-list-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  color: #737373;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.booking-list-pagination > div {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 14px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #171717;
+  gap: 10px;
 }
-.booking-list-group > summary {
-  cursor: pointer;
-  list-style: none;
+.booking-list-pagination .icon-btn {
+  background: #f5f5f5;
+  border-radius: 10px;
 }
-.booking-list-group > summary::-webkit-details-marker {
-  display: none;
+.booking-list-pagination button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
-.booking-list-group > summary::after {
-  content: '⌄';
-  margin-left: auto;
-  color: #737373;
+.booking-list-range {
+  border-top: 1px solid #ededed;
 }
-.booking-list-group[open] > summary::after {
-  transform: rotate(180deg);
+.booking-list-range .btn {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
-.booking-list-group > summary:hover {
-  background: #fafafa;
+.unified-bookings {
+  scroll-margin-top: 18px;
 }
-.booking-list-group > summary:focus-visible {
-  outline: 2px solid #0066ff;
-  outline-offset: -3px;
+.unified-bookings:focus {
+  outline: none;
+}
+@media (max-width: 600px) {
+  .booking-list-range > span {
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+  }
+  .booking-list-sort {
+    padding: 12px;
+  }
 }
 /* Same toolbar geometry in both views; replaces the calendar-only padding rule. */
 .app-shell .card.bookings-workspace > .booking-toolbar {
