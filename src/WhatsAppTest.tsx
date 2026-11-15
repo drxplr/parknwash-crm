@@ -36,6 +36,31 @@ const labels: Record<string, string> = {
   delivered: 'Delivered',
   read: 'Read',
 }
+function templateBlockReason(
+  state: WhatsAppTestState | null,
+  status: string,
+  code: string | null | undefined,
+  loading: boolean,
+) {
+  if (loading) return 'Checking server setup and Meta approval…'
+  if (!state) return 'Could not load test settings. Refresh to try again.'
+  if (!state.ready) return `Finish server setup first: ${state.missing.join(', ')}.`
+  if (code === '190')
+    return 'Meta access token is expired or invalid. Update WHATSAPP_ACCESS_TOKEN in Supabase → Edge Functions → Secrets, then refresh.'
+  if (status === 'CONTENT_MISMATCH')
+    return 'Meta’s template differs from the CRM template. Open “Create or check template” and compare the body, language and category.'
+  if (status === 'NOT_CREATED')
+    return 'CRM could not find this exact template in English (US) in the configured WhatsApp account.'
+  if (status === 'PENDING')
+    return 'Meta is still reviewing this template. Refresh after it is approved.'
+  if (status === 'REJECTED')
+    return 'Meta rejected this template. Review its rejection reason in WhatsApp Manager.'
+  if (status === 'PAUSED' || status === 'DISABLED')
+    return 'Meta has paused or disabled this template. Check WhatsApp Manager.'
+  if (status !== 'APPROVED')
+    return `CRM could not verify approval with Meta${code ? ` (code ${code})` : ''}. Refresh to check again.`
+  return ''
+}
 export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
   const [state, setState] = useState<WhatsAppTestState | null>(null)
   const [busy, setBusy] = useState(false),
@@ -43,6 +68,7 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
   const [error, setError] = useState(''),
     [notice, setNotice] = useState('')
   const [copyError, setCopyError] = useState('')
+  const [lastKind, setLastKind] = useState<TestMessageKind>('connection')
   const sending = useRef(false),
     mounted = useRef(true)
   async function reload() {
@@ -72,6 +98,7 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
     if (!api || !state?.ready || sending.current) return
     sending.current = true
     setBusy(true)
+    setLastKind(kind)
     setError('')
     setNotice('')
     try {
@@ -139,6 +166,7 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
               {bookingTemplates.map((t) => {
                 const approval = state?.templates?.find((a) => a.kind === t.kind)
                 const status = approval?.status ?? 'UNAVAILABLE'
+                const blockedReason = templateBlockReason(state, status, approval?.code, loading)
                 const statusLabel: Record<string, string> = {
                   APPROVED: 'Approved · test ready',
                   NOT_CREATED: 'Create in Meta',
@@ -164,13 +192,43 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
                       <button
                         type="button"
                         className="btn"
-                        disabled={busy || loading || !state?.ready || status !== 'APPROVED'}
+                        disabled={busy || !!blockedReason}
+                        aria-describedby={blockedReason ? `wa-blocked-${t.kind}` : undefined}
                         onClick={() => void send(t.kind)}
                       >
                         <Send size={14} />
-                        Test this template
+                        {busy && lastKind === t.kind ? 'Sending…' : 'Test this template'}
                       </button>
+                      {blockedReason && (
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={loading || busy}
+                          onClick={() => {
+                            setError('')
+                            void reload()
+                          }}
+                        >
+                          <RefreshCw size={14} />
+                          {loading ? 'Checking…' : 'Check status'}
+                        </button>
+                      )}
                     </div>
+                    {blockedReason && (
+                      <p className="wa-template-blocked" id={`wa-blocked-${t.kind}`} role="status">
+                        {blockedReason}
+                      </p>
+                    )}
+                    {lastKind === t.kind && error && (
+                      <p className="wa-template-feedback form-error" role="alert">
+                        {error}
+                      </p>
+                    )}
+                    {lastKind === t.kind && notice && (
+                      <p className="wa-template-feedback wa-notice" role="status">
+                        {notice}
+                      </p>
+                    )}
                     <details className="wa-template-instructions">
                       <summary>Create or check template</summary>
                       <p>

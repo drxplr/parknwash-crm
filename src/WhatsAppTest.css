@@ -215,3 +215,19 @@
 .wa-log strong {
   overflow-wrap: anywhere;
 }
+
+.wa-template-blocked {
+  padding: 10px 12px;
+  margin: 12px 0 0;
+  border-radius: 10px;
+  background: #fff3db;
+  color: #78350f;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.wa-templates .wa-template-feedback {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
