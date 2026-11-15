@@ -31,6 +31,7 @@ export interface Vehicle {
   lastWashOn?: string
 }
 export interface ImportedBooking {
+  duration?: number
   id: string
   customerId: string
   vehicleId?: string

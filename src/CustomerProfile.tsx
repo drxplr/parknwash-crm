@@ -14,7 +14,8 @@ import {
 } from 'lucide-react'
 import { customerColorStyle } from './customerColors'
 import { ActivityHistory } from './ActivityHistory'
-import { ImportedHistory } from './ImportedHistory'
+import { UnifiedBookingList } from './UnifiedBookings'
+import { buildBookingEntries } from './bookingEntries'
 import { CustomerDetails } from './Operations'
 import { Select } from './Select'
 import { dayLabel, money, whatsappLink } from './model'
@@ -247,12 +248,13 @@ export function CustomerProfile({
           <ActivityHistory activities={activities} addNote={onAddNote} readOnly={readOnly} />
         ) : tab === 'Bookings' ? (
           <div className="client-booking-list">
-            {chronological.length
-              ? [...chronological].reverse().map((b) => bookingRow(b))
-              : !imported.length && <p className="client-empty-inline">No bookings yet.</p>}
-            {imported.length > 0 && (
-              <ImportedHistory compact records={imported} customers={store.customers} />
-            )}
+            <UnifiedBookingList
+              entries={buildBookingEntries(store)
+                .filter((b) => b.customer.id === c.id)
+                .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))}
+              store={store}
+              onOpenLive={onOpenBooking}
+            />
           </div>
         ) : (
           <>

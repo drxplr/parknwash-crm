@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
 import { layoutBookings, minutes } from './calendarModel'
 import { customerColorStyle } from './customerColors'
+import type { BookingEntry } from './bookingEntries'
 import type { Store } from './model'
 export type BookingStart = {
   date: string
@@ -29,7 +30,7 @@ export function ScheduleCalendar({
 }: {
   store: Store
   today?: string
-  bookings: Store['bookings']
+  bookings: BookingEntry[]
   team: Store['settings']['staff']
   date: string
   start: string
@@ -40,6 +41,12 @@ export function ScheduleCalendar({
   onCreate: (context: BookingStart) => void
 }) {
   const scroll = useRef<HTMLDivElement>(null)
+  const startHour = Math.min(7, ...bookings.map((b) => Math.floor(minutes(b.time) / 60)))
+  const endHour = Math.min(
+    24,
+    Math.max(20, ...bookings.map((b) => Math.ceil((minutes(b.time) + b.duration) / 60))),
+  )
+  const gridHours = Math.max(1, endHour - startHour)
   const columns =
     range === 'Week'
       ? Array.from({ length: 7 }, (_, i) => ({
@@ -60,12 +67,20 @@ export function ScheduleCalendar({
               subtitle: 'Assign team when booking',
             },
           ]
+  if (range === 'Day' && team.length && bookings.some((b) => b.staffIds.length === 0))
+    columns.push({
+      key: '__unassigned',
+      date,
+      staffId: '__unassigned',
+      name: 'Unassigned',
+      subtitle: 'No recorded assignee',
+    })
   useEffect(() => {
     if (scroll.current) {
       const earliest = bookings.length ? Math.min(...bookings.map((b) => minutes(b.time))) : 540
-      scroll.current.scrollTop = Math.max(0, ((earliest - 450) * hourHeight) / 60)
+      scroll.current.scrollTop = Math.max(0, ((earliest - startHour * 60 - 30) * hourHeight) / 60)
     }
-  }, [start, date, range])
+  }, [start, date, range, startHour])
   if (!columns.length) return <p className="operation-caption">No staff match these filters.</p>
   return (
     <>
@@ -99,15 +114,18 @@ export function ScheduleCalendar({
                 disabled={
                   range === 'Day' &&
                   (!canCreate ||
+                    col.staffId === '__unassigned' ||
                     (!!col.staffId && !team.some((s) => s.id === col.staffId && canAssignWash(s))))
                 }
                 aria-label={
                   range === 'Week'
                     ? `Open ${dayLabel(col.date)} staff schedule`
-                    : `Book with ${col.name}`
+                    : col.staffId === '__unassigned'
+                      ? 'Unassigned visits'
+                      : `Book with ${col.name}`
                 }
               >
-                {range === 'Day' && (
+                {range === 'Day' && col.staffId !== '__unassigned' && (
                   <span className="schedule-staff-avatar">
                     {col.name
                       .split(' ')
@@ -123,26 +141,31 @@ export function ScheduleCalendar({
               </button>
             </div>
           ))}
-          <div className="schedule-ruler" style={{ height: 13 * hourHeight }}>
-            {Array.from({ length: 14 }, (_, i) => (
+          <div className="schedule-ruler" style={{ height: gridHours * hourHeight }}>
+            {Array.from({ length: gridHours + 1 }, (_, i) => (
               <span key={i} style={{ top: i * hourHeight }}>
-                {String(i + 7).padStart(2, '0')}:00
+                {String(i + startHour).padStart(2, '0')}:00
               </span>
             ))}
           </div>
           {columns.map((col) => {
             const items = bookings.filter(
-              (b) => b.date === col.date && (!col.staffId || b.staffIds.includes(col.staffId)),
+              (b) =>
+                b.date === col.date &&
+                (col.staffId === '__unassigned'
+                  ? !b.staffIds.length
+                  : !col.staffId || b.staffIds.includes(col.staffId)),
             )
             return (
               <div
                 key={col.key}
                 className={`schedule-lane ${col.date === today ? 'is-today' : ''}`}
-                style={{ height: 13 * hourHeight }}
+                style={{ height: gridHours * hourHeight }}
               >
-                {canCreate && (
+                {canCreate && col.staffId !== '__unassigned' && (
                   <FreeTimes
                     date={col.date}
+                    startHour={startHour}
                     staffId={col.staffId}
                     team={team}
                     store={store}
@@ -150,23 +173,26 @@ export function ScheduleCalendar({
                   />
                 )}
                 {layoutBookings(items).map(({ booking: b, column, columns: lanes }) => {
-                  const v = store.vehicles.find((v) => v.id === b.vehicleId)!,
-                    c = store.customers.find((c) => c.id === v.customerId)!
+                  const c = b.customer
                   const teamName = b.staffIds
                     .map((id) => store.settings.staff.find((s) => s.id === id)?.name)
                     .join(', ')
-                  const label = `${b.time}, ${c.name}, ${v.model}, ${b.service}, ${b.status}, ${teamName}`
+                  const label = `${b.time}, ${c.name}, ${b.vehicleLabel}, ${b.service}, ${b.status}, ${teamName || 'Unassigned'}${b.imported ? ', Imported from vcita, read only' : ''}${!b.durationKnown ? ', duration not recorded' : ''}`
                   return (
                     <button
                       key={b.id}
-                      className={`schedule-event ${b.duration <= 60 ? 'short' : ''} ${lanes > 1 ? 'narrow' : ''} ${b.status === 'Cancelled' ? 'cancelled' : ''}`}
+                      className={`schedule-event ${b.duration <= 60 ? 'short' : ''} ${lanes > 1 ? 'narrow' : ''} ${['Cancelled', 'Rejected', 'No-show'].includes(b.status) ? 'cancelled' : ''} ${b.imported ? 'imported-event' : ''}`}
                       title={label}
                       aria-label={label}
                       onClick={() => onOpen(b.id)}
                       style={{
                         ...customerColorStyle(c),
-                        top: ((minutes(b.time) - 420) * hourHeight) / 60 + 2,
-                        height: (b.duration * hourHeight) / 60 - 4,
+                        top: ((minutes(b.time) - startHour * 60) * hourHeight) / 60 + 2,
+                        height: Math.max(
+                          18,
+                          (Math.min(b.duration, endHour * 60 - minutes(b.time)) * hourHeight) / 60 -
+                            4,
+                        ),
                         left: `calc(${(column / lanes) * 100}% + 4px)`,
                         width: `calc(${100 / lanes}% - 8px)`,
                       }}
@@ -176,7 +202,9 @@ export function ScheduleCalendar({
                           className={`event-state ${b.status.toLowerCase().replaceAll(' ', '-')}`}
                         />
                         {b.time}
-                        {lanes === 1 && <small>{b.duration}m</small>}
+                        {lanes === 1 && (
+                          <small>{b.durationKnown ? `${b.duration}m` : 'Time only'}</small>
+                        )}
                       </span>
                       <strong>
                         {range === 'Week' && lanes > 1 && c.type !== 'Business'
@@ -186,7 +214,7 @@ export function ScheduleCalendar({
                               .join(' ')
                           : c.name}
                       </strong>
-                      <span className="event-vehicle">{v.model}</span>
+                      <span className="event-vehicle">{b.vehicleLabel}</span>
                     </button>
                   )
                 })}
@@ -204,12 +232,14 @@ export function ScheduleCalendar({
 }
 function FreeTimes({
   date,
+  startHour,
   staffId,
   team,
   store,
   onCreate,
 }: {
   date: string
+  startHour: number
   staffId?: string
   team: Store['settings']['staff']
   store: Store
@@ -257,7 +287,10 @@ function FreeTimes({
           type="button"
           key={slot.index}
           className="free-time"
-          style={{ top: (slot.index * hourHeight) / 2, height: hourHeight / 2 }}
+          style={{
+            top: ((420 - startHour * 60) * hourHeight) / 60 + (slot.index * hourHeight) / 2,
+            height: hourHeight / 2,
+          }}
           tabIndex={i === active ? 0 : -1}
           onFocus={() => setFocus(i)}
           onKeyDown={(e) => {

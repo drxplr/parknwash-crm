@@ -12,9 +12,9 @@ export function calendarRangeLabel(start: string, end: string) {
     return dayLabel(start, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
   return `${label(start, start.slice(0, 4) !== end.slice(0, 4))} – ${label(end, true)}`
 }
-export function layoutBookings(bookings: Booking[]) {
-  const result: { booking: Booking; column: number; columns: number }[] = []
-  let group: { booking: Booking; column: number; columns: number }[] = [],
+export function layoutBookings<T extends Pick<Booking, 'id' | 'time' | 'duration'>>(bookings: T[]) {
+  const result: { booking: T; column: number; columns: number }[] = []
+  let group: { booking: T; column: number; columns: number }[] = [],
     ends: number[] = [],
     groupEnd = -1
   const flush = () => {

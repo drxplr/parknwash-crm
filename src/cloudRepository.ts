@@ -59,6 +59,7 @@ export function snapshotToStore(s: Snapshot): Store {
       vehicleLabel: str(b, 'vehicle_label'),
       region: b.region as Region | undefined,
       ...localParts(str(b, 'starts_at')),
+      duration: (Date.parse(str(b, 'ends_at')) - Date.parse(str(b, 'starts_at'))) / 60000,
       service: str(b, 'service'),
       status: str(b, 'source_status'),
       noShow: b.no_show === true,

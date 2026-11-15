@@ -13,7 +13,8 @@ import { startOfWeek, calendarRangeLabel } from './calendarModel'
 import { Select } from './Select'
 import { customerColorStyle } from './customerColors'
 import { Messages, Settings } from './Operations'
-import { ImportedHistory } from './ImportedHistory'
+import { buildBookingEntries, entryStatusMatches } from './bookingEntries'
+import { UnifiedBookingList, ImportedVisitDetails } from './UnifiedBookings'
 import type { WhatsAppTestApi } from './WhatsAppTest'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
@@ -57,7 +58,16 @@ import {
   customerTypeLabel,
   swissToday,
 } from './model'
-import type { Activity, Booking, Customer, Region, Status, Store, Vehicle } from './model'
+import type {
+  Activity,
+  Booking,
+  Customer,
+  ImportedBooking,
+  Region,
+  Status,
+  Store,
+  Vehicle,
+} from './model'
 type Page = 'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings' | 'My washes'
 type Detail = { kind: 'booking' | 'customer' | 'vehicle'; id: string } | null
 const initials = (name: string) =>
@@ -223,12 +233,13 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
   const [view, setView] = useState<'List' | 'Calendar'>('Calendar'),
     [date, setDate] = useState(today),
     [range, setRange] = useState<'Day' | 'Week'>('Week'),
-    [status, setStatus] = useState('All active'),
+    [status, setStatus] = useState('All statuses'),
     [customerType, setCustomerType] = useState('All customers'),
     [tableSearch, setTableSearch] = useState(''),
     [directoryView, setDirectoryView] = useState<'Customers' | 'Vehicles'>('Customers'),
     [sort, setSort] = useState('Name A–Z')
-  const [historyOpen, setHistoryOpen] = useState(false)
+  const [bookingSearch, setBookingSearch] = useState('')
+  const [importedDetail, setImportedDetail] = useState<ImportedBooking | null>(null)
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   }, [page])
@@ -337,15 +348,33 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
   )
   const rangeStart = range === 'Week' ? startOfWeek(date) : date
   const rangeEnd = addDays(rangeStart, range === 'Week' ? 6 : 0)
-  const visibleBookings = filtered
+  function openImportedBooking(booking: ImportedBooking) {
+    setDetail(null)
+    setImportedDetail(booking)
+  }
+  const allBookingEntries = buildBookingEntries(store)
+  const visibleBookings = allBookingEntries
     .filter(
       (b) =>
+        (region === 'All regions' || b.region === region) &&
+        (staffFilter === 'All staff' || b.staffIds.includes(staffFilter)) &&
         b.date >= rangeStart &&
         b.date <= rangeEnd &&
-        (status === 'All statuses' ||
-          (status === 'All active' ? b.status !== 'Cancelled' : b.status === status)),
+        entryStatusMatches(b, status) &&
+        matches(
+          bookingSearch,
+          b.customer.name,
+          b.vehicleLabel,
+          b.plate,
+          b.service,
+          b.imported?.sourceId ?? '',
+          b.imported?.notes ?? '',
+        ),
     )
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+  const bookingFilterStatuses = [
+    ...new Set([...statuses, ...allBookingEntries.map((b) => b.status)]),
+  ]
   const lastVisit = (customerId: string, vehicleId?: string) =>
     [
       ...store.bookings
@@ -749,7 +778,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         <option>Ticino</option>
                       </Select>
                     </label>
-                    {(page === 'Overview' || (page === 'Bookings' && !historyOpen)) && (
+                    {(page === 'Overview' || page === 'Bookings') && (
                       <label className="select-wrap">
                         <Users size={14} />
                         <Select
@@ -1051,11 +1080,10 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   <div className="segmented selection-tabs">
                     {(['Calendar', 'List'] as const).map((v) => (
                       <button
-                        className={!historyOpen && view === v ? 'selected' : ''}
-                        aria-pressed={!historyOpen && view === v}
+                        className={view === v ? 'selected' : ''}
+                        aria-pressed={view === v}
                         key={v}
                         onClick={() => {
-                          setHistoryOpen(false)
                           setView(v)
                         }}
                       >
@@ -1067,161 +1095,172 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                         {v}
                       </button>
                     ))}
-                    {!!store.importedBookings?.length && (
-                      <button
-                        className={historyOpen ? 'selected' : ''}
-                        aria-pressed={historyOpen}
-                        onClick={() => setHistoryOpen(true)}
-                      >
-                        vcita history
-                      </button>
-                    )}
                   </div>
-                  {!historyOpen && (
-                    <>
-                      <div className="date-nav">
-                        <button
-                          className="icon-btn"
-                          aria-label="Previous date range"
-                          onClick={() => setDate(addDays(date, range === 'Week' ? -7 : -1))}
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <DatePicker
-                          value={date}
-                          today={today}
-                          label={calendarRangeLabel(rangeStart, rangeEnd)}
-                          onChange={setDate}
-                        />
-                        <button
-                          className="icon-btn"
-                          aria-label="Next date range"
-                          onClick={() => setDate(addDays(date, range === 'Week' ? 7 : 1))}
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                        <button
-                          className="btn small-btn"
-                          title={cloud ? 'Today · Europe/Zurich' : 'Demo today · 9 November 2026'}
-                          onClick={() => setDate(today)}
-                        >
-                          Today
-                        </button>
-                      </div>
-                      <div className="booking-controls">
-                        <Select
-                          aria-label="Date range"
-                          value={range}
-                          onChange={(e) => setRange(e.target.value as 'Day' | 'Week')}
-                        >
-                          <option>Week</option>
-                          <option>Day</option>
-                        </Select>
-                        <Select
-                          aria-label="Booking status"
-                          value={status}
-                          onChange={(e) => setStatus(e.target.value)}
-                        >
-                          <option>All active</option>
-                          <option>All statuses</option>
-                          {statuses.map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
-                        </Select>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {historyOpen ? (
-                  <ImportedHistory
-                    records={store.importedBookings ?? []}
-                    customers={store.customers}
-                    region={region}
-                    onCustomer={openCustomer}
-                  />
-                ) : (
                   <>
-                    <div className="schedule-context">
-                      <span>
-                        <strong>{visibleBookings.length}</strong> bookings ·{' '}
-                        {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
-                      </span>
-                      {!cloud && <span className="demo-label">Fictional demo bookings</span>}
-                    </div>
-                    {(status !== 'All active' ||
-                      region !== 'All regions' ||
-                      staffFilter !== 'All staff') && (
-                      <div className="calendar-filter-state">
-                        <span>
-                          {[
-                            region !== 'All regions' ? region : '',
-                            staffFilter !== 'All staff'
-                              ? staff.find((s) => s.id === staffFilter)?.name
-                              : '',
-                            status !== 'All active' ? status : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setRegion('All regions')
-                            setStaffFilter('All staff')
-                            setStatus('All active')
-                          }}
-                        >
-                          Clear filters <X size={12} />
-                        </button>
-                      </div>
-                    )}
-                    {view === 'List' ? (
-                      bookingRows(visibleBookings, true)
-                    ) : (
-                      <ScheduleCalendar
-                        store={store}
+                    <div className="date-nav">
+                      <button
+                        className="icon-btn"
+                        aria-label="Previous date range"
+                        onClick={() => setDate(addDays(date, range === 'Week' ? -7 : -1))}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <DatePicker
+                        value={date}
                         today={today}
-                        bookings={visibleBookings}
-                        team={staff.filter(
-                          (s) =>
-                            (canAssignWash(s) ||
-                              visibleBookings.some((b) => b.staffIds.includes(s.id))) &&
-                            (region === 'All regions' || s.region === region) &&
-                            (staffFilter === 'All staff' || s.id === staffFilter),
-                        )}
-                        date={date}
-                        start={rangeStart}
-                        range={range}
-                        canCreate={
-                          (!cloud || cloud.role !== 'viewer') &&
-                          !!store.settings.services.length &&
-                          !!store.vehicles.length
-                        }
-                        onOpen={(id) => setDetail({ kind: 'booking', id })}
-                        onDay={(day) => {
-                          setDate(day)
-                          setRange('Day')
-                        }}
-                        onCreate={(context) => {
-                          if (
-                            !cloud ||
-                            (cloud.role !== 'viewer' &&
-                              store.settings.services.length &&
-                              store.vehicles.length)
-                          ) {
-                            setBookingStart(context)
-                            setNewBooking(true)
-                          }
-                        }}
+                        label={calendarRangeLabel(rangeStart, rangeEnd)}
+                        onChange={setDate}
                       />
-                    )}
-                    <div className="table-footer">
-                      <span>
-                        {visibleBookings.length} bookings in this {range.toLowerCase()}
-                      </span>
-                      <span>Times in Europe/Zurich</span>
+                      <button
+                        className="icon-btn"
+                        aria-label="Next date range"
+                        onClick={() => setDate(addDays(date, range === 'Week' ? 7 : 1))}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                      <button
+                        className="btn small-btn"
+                        title={cloud ? 'Today · Europe/Zurich' : 'Demo today · 9 November 2026'}
+                        onClick={() => setDate(today)}
+                      >
+                        Today
+                      </button>
+                    </div>
+                    <div className="booking-controls">
+                      <Select
+                        aria-label="Date range"
+                        value={range}
+                        onChange={(e) => setRange(e.target.value as 'Day' | 'Week')}
+                      >
+                        <option>Week</option>
+                        <option>Day</option>
+                      </Select>
+                      <Select
+                        aria-label="Booking status"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                      >
+                        <option>All active</option>
+                        <option>All statuses</option>
+                        {bookingFilterStatuses.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </Select>
                     </div>
                   </>
-                )}
+                </div>
+                <>
+                  <div className="unified-booking-context">
+                    <span>
+                      <strong>{visibleBookings.length}</strong> bookings ·{' '}
+                      {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
+                    </span>
+                    <label className="unified-booking-search">
+                      <Search size={14} aria-hidden="true" />
+                      <input
+                        aria-label="Search bookings"
+                        placeholder="Search bookings…"
+                        value={bookingSearch}
+                        onChange={(e) => setBookingSearch(e.target.value)}
+                      />
+                    </label>
+                    {!cloud && <span className="demo-label">Fictional demo bookings</span>}
+                  </div>
+                  {(bookingSearch.trim() ||
+                    status !== 'All statuses' ||
+                    region !== 'All regions' ||
+                    staffFilter !== 'All staff') && (
+                    <div className="calendar-filter-state">
+                      <span>
+                        {[
+                          bookingSearch.trim() ? `Search: ${bookingSearch.trim()}` : '',
+                          region !== 'All regions' ? region : '',
+                          staffFilter !== 'All staff'
+                            ? staff.find((s) => s.id === staffFilter)?.name
+                            : '',
+                          status !== 'All statuses' ? status : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setRegion('All regions')
+                          setStaffFilter('All staff')
+                          setStatus('All statuses')
+                          setBookingSearch('')
+                        }}
+                      >
+                        Clear filters <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  {staffFilter !== 'All staff' &&
+                    (store.importedBookings ?? []).some(
+                      (b) => b.date >= rangeStart && b.date <= rangeEnd,
+                    ) && (
+                      <p className="operation-caption">
+                        Imported visits have no recorded assignee and are hidden by this staff
+                        filter. Select All staff to see them.
+                      </p>
+                    )}
+                  {view === 'List' ? (
+                    <UnifiedBookingList
+                      entries={visibleBookings}
+                      store={store}
+                      onOpenLive={(id) => setDetail({ kind: 'booking', id })}
+                      onOpenImported={openImportedBooking}
+                      onCustomer={openCustomer}
+                    />
+                  ) : (
+                    <ScheduleCalendar
+                      store={store}
+                      today={today}
+                      bookings={visibleBookings}
+                      team={staff.filter(
+                        (s) =>
+                          (canAssignWash(s) ||
+                            visibleBookings.some((b) => b.staffIds.includes(s.id))) &&
+                          (region === 'All regions' || s.region === region) &&
+                          (staffFilter === 'All staff' || s.id === staffFilter),
+                      )}
+                      date={date}
+                      start={rangeStart}
+                      range={range}
+                      canCreate={
+                        (!cloud || cloud.role !== 'viewer') &&
+                        !!store.settings.services.length &&
+                        !!store.vehicles.length
+                      }
+                      onOpen={(id) => {
+                        const entry = visibleBookings.find((b) => b.id === id)
+                        if (entry?.imported) openImportedBooking(entry.imported)
+                        else if (entry?.live) setDetail({ kind: 'booking', id: entry.live.id })
+                      }}
+                      onDay={(day) => {
+                        setDate(day)
+                        setRange('Day')
+                      }}
+                      onCreate={(context) => {
+                        if (
+                          !cloud ||
+                          (cloud.role !== 'viewer' &&
+                            store.settings.services.length &&
+                            store.vehicles.length)
+                        ) {
+                          setBookingStart(context)
+                          setNewBooking(true)
+                        }
+                      }}
+                    />
+                  )}
+                  <div className="table-footer">
+                    <span>
+                      {visibleBookings.length} bookings in this {range.toLowerCase()}
+                    </span>
+                    <span>Times in Europe/Zurich</span>
+                  </div>
+                </>
               </section>
             )}
             {page === 'Customers' && (
@@ -1594,6 +1633,11 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             )}
           </main>
         </div>
+        {importedDetail && (
+          <Dialog title="Imported booking" onClose={() => setImportedDetail(null)}>
+            <ImportedVisitDetails booking={importedDetail} />
+          </Dialog>
+        )}
         {detail &&
           (detail.kind === 'booking' ? store.bookings.some((b) => b.id === detail.id) : true) && (
             <Dialog
@@ -1710,7 +1754,21 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           importedRecords={(store.importedBookings ?? []).filter(
                             (b) => b.vehicleId === v.id,
                           )}
-                          renderBookings={(bs) => bookingRows(bs, true)}
+                          renderBookings={(bs) => (
+                            <UnifiedBookingList
+                              store={store}
+                              entries={allBookingEntries
+                                .filter((entry) =>
+                                  entry.live
+                                    ? bs.some((b) => b.id === entry.live!.id)
+                                    : entry.imported?.vehicleId === detail.id,
+                                )
+                                .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time))}
+                              onOpenLive={(id) => setDetail({ kind: 'booking', id })}
+                              onOpenImported={openImportedBooking}
+                              onCustomer={openCustomer}
+                            />
+                          )}
                         >
                           <form
                             className="settings-section"
@@ -1909,7 +1967,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   }))
                   setNewBooking(false)
                   setDate(b.date)
-                  setStatus('All active')
+                  setStatus('All statuses')
                   setRegion('All regions')
                   setStaffFilter('All staff')
                   setDetail({ kind: 'booking', id: b.id })
@@ -2080,17 +2138,9 @@ function Profile({
           </>
         ) : tab === 'Bookings' ? (
           <div className="profile-bookings">
-            {!!importedRecords.length && (
-              <ImportedHistory
-                compact
-                records={importedRecords}
-                customers={customer ? [customer] : []}
-              />
+            {renderBookings(
+              [...bookings].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)),
             )}
-            {(bookings.length > 0 || !importedRecords.length) &&
-              renderBookings(
-                [...bookings].sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)),
-              )}
           </div>
         ) : (
           <ActivityHistory activities={activities} addNote={addNote} />
