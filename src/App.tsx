@@ -1,3 +1,4 @@
+import { BookingCustomerSearch } from './BookingCustomerSearch'
 import './Overview.css'
 import { WasherWorkspace } from './WasherWorkspace'
 import { canAssignWash } from './teamRoles'
@@ -238,7 +239,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
     [tableSearch, setTableSearch] = useState(''),
     [directoryView, setDirectoryView] = useState<'Customers' | 'Vehicles'>('Customers'),
     [sort, setSort] = useState('Name A–Z')
-  const [bookingSearch, setBookingSearch] = useState('')
   const [importedDetail, setImportedDetail] = useState<ImportedBooking | null>(null)
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
@@ -360,16 +360,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
         (staffFilter === 'All staff' || b.staffIds.includes(staffFilter)) &&
         b.date >= rangeStart &&
         b.date <= rangeEnd &&
-        entryStatusMatches(b, status) &&
-        matches(
-          bookingSearch,
-          b.customer.name,
-          b.vehicleLabel,
-          b.plate,
-          b.service,
-          b.imported?.sourceId ?? '',
-          b.imported?.notes ?? '',
-        ),
+        entryStatusMatches(b, status),
     )
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
   const bookingFilterStatuses = [
@@ -1075,7 +1066,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               </div>
             )}
             {page === 'Bookings' && (
-              <section className="card">
+              <section className="card bookings-workspace">
                 <div className="booking-toolbar">
                   <div className="segmented selection-tabs">
                     {(['Calendar', 'List'] as const).map((v) => (
@@ -1155,25 +1146,15 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                       <strong>{visibleBookings.length}</strong> bookings ·{' '}
                       {range === 'Week' ? 'Week' : 'Day'} · Europe/Zurich
                     </span>
-                    <label className="unified-booking-search">
-                      <Search size={14} aria-hidden="true" />
-                      <input
-                        aria-label="Search bookings"
-                        placeholder="Search bookings…"
-                        value={bookingSearch}
-                        onChange={(e) => setBookingSearch(e.target.value)}
-                      />
-                    </label>
+
                     {!cloud && <span className="demo-label">Fictional demo bookings</span>}
                   </div>
-                  {(bookingSearch.trim() ||
-                    status !== 'All statuses' ||
+                  {(status !== 'All statuses' ||
                     region !== 'All regions' ||
                     staffFilter !== 'All staff') && (
                     <div className="calendar-filter-state">
                       <span>
                         {[
-                          bookingSearch.trim() ? `Search: ${bookingSearch.trim()}` : '',
                           region !== 'All regions' ? region : '',
                           staffFilter !== 'All staff'
                             ? staff.find((s) => s.id === staffFilter)?.name
@@ -1188,7 +1169,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                           setRegion('All regions')
                           setStaffFilter('All staff')
                           setStatus('All statuses')
-                          setBookingSearch('')
                         }}
                       >
                         Clear filters <X size={12} />
@@ -1207,6 +1187,8 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   {view === 'List' ? (
                     <UnifiedBookingList
                       entries={visibleBookings}
+                      grouped
+                      today={today}
                       store={store}
                       onOpenLive={(id) => setDetail({ kind: 'booking', id })}
                       onOpenImported={openImportedBooking}
@@ -2530,7 +2512,17 @@ function NewBooking({
   return (
     <form className="booking-form" onSubmit={submit}>
       <h2>New booking</h2>
-
+      <BookingCustomerSearch
+        store={store}
+        onSelect={(customerId, vehicleId) => {
+          const chosen = store.customers.find((c) => c.id === customerId)!
+          setCustomerId(customerId)
+          setVehicleId(vehicleId)
+          setAddress(chosen.address)
+          setAssigned([])
+          setError('')
+        }}
+      />
       <div className="form-grid">
         <label className="field">
           Customer

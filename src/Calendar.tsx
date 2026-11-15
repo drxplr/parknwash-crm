@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { addDays, dayLabel, overlaps, DEMO_DATE } from './model'
 import { layoutBookings, minutes } from './calendarModel'
 import { customerColorStyle } from './customerColors'
+import { bookingBucket } from './bookingEntries'
 import type { BookingEntry } from './bookingEntries'
 import type { Store } from './model'
 export type BookingStart = {
@@ -181,7 +182,7 @@ export function ScheduleCalendar({
                   return (
                     <button
                       key={b.id}
-                      className={`schedule-event ${b.duration <= 60 ? 'short' : ''} ${lanes > 1 ? 'narrow' : ''} ${['Cancelled', 'Rejected', 'No-show'].includes(b.status) ? 'cancelled' : ''} ${b.imported ? 'imported-event' : ''}`}
+                      className={`schedule-event ${b.duration <= 60 ? 'short' : ''} ${lanes > 1 ? 'narrow' : ''} ${['Cancelled', 'Rejected', 'No-show'].includes(b.status) ? 'cancelled' : ''} ${b.imported ? 'imported-event' : ''} ${bookingBucket(b, today) !== 'upcoming' ? 'muted-event' : ''}`}
                       title={label}
                       aria-label={label}
                       onClick={() => onOpen(b.id)}
