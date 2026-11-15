@@ -20,7 +20,7 @@ export interface WhatsAppTestState {
   template: string
   language: string
   messages: WhatsAppTestMessage[]
-  templates?: { kind: string; status: string; code: string | null }[]
+  templates?: { kind: string; status: string; code: string | null; language?: string | null }[]
   customer_sending_enabled?: boolean
 }
 export interface WhatsAppTestApi {
@@ -50,7 +50,7 @@ function templateBlockReason(
   if (status === 'CONTENT_MISMATCH')
     return 'Meta’s template differs from the CRM template. Open “Create or check template” and compare the body, language and category.'
   if (status === 'NOT_CREATED')
-    return 'CRM could not find this exact template in English (US) in the configured WhatsApp account.'
+    return 'CRM could not find this exact template in English or English (US) in the configured WhatsApp account.'
   if (status === 'PENDING')
     return 'Meta is still reviewing this template. Refresh after it is approved.'
   if (status === 'REJECTED')
@@ -159,7 +159,7 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
               <span className="wa-test-badge">Customer automation off</span>
             </div>
             <p className="wa-muted">
-              Two Utility templates · English (US). Tests use fictional details and go only to{' '}
+              Two Utility templates · English. Tests use fictional details and go only to{' '}
               {state?.recipient ?? 'the configured test number'}.
             </p>
             <div className="wa-templates">
@@ -183,6 +183,7 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
                       <h4>{t.title}</h4>
                       <span className={`wa-status ${status === 'APPROVED' ? 'wa-delivered' : ''}`}>
                         {statusLabel[status] ?? status}
+                        {approval?.language ? ` · ${approval.language}` : ''}
                       </span>
                     </header>
                     <p className="wa-message-preview">
@@ -233,9 +234,9 @@ export function WhatsAppTest({ api }: { api?: WhatsAppTestApi }) {
                       <summary>Create or check template</summary>
                       <p>
                         Meta → WhatsApp Manager → Message templates → Create template. Choose
-                        Utility, English (US), positional variables. Use only a body; no header,
-                        footer or buttons. Paste the entire body, including the greeting and closing
-                        sentence. Do not place variables at the start or end.
+                        Utility, English or English (US), positional variables. Use only a body; no
+                        header, footer or buttons. Paste the entire body, including the greeting and
+                        closing sentence. Do not place variables at the start or end.
                       </p>
                       <label>
                         Template name<code>{t.name}</code>
