@@ -20,7 +20,6 @@ import { Messages, Settings } from './Operations'
 import { buildBookingEntries, entryStatusMatches } from './bookingEntries'
 import { UnifiedBookingList, ImportedVisitDetails } from './UnifiedBookings'
 import type { WhatsAppTestApi } from './WhatsAppTest'
-import type { TeamInvitationsApi } from './TeamInvitations'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
@@ -203,7 +202,6 @@ function Dialog({
   )
 }
 export interface CloudMode {
-  invitations?: TeamInvitationsApi
   whatsapp?: WhatsAppTestApi
   washerStaffId?: string
   saveWorkTime: (id: string, minutes: number | null) => Promise<Store>
@@ -1668,7 +1666,6 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 key={resetKey}
                 store={store}
                 whatsapp={cloud?.whatsapp}
-                invitations={cloud?.invitations}
                 onSave={(settings) => {
                   setStore((s) => ({ ...s, settings }))
                   setToast('Settings saved')

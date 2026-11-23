@@ -1,7 +1,6 @@
 import { WasherWorkspace } from './WasherWorkspace'
 import { authErrorMessage, retryConnectionOnce, retryPasswordSignIn } from './connectionRecovery'
 import { PasswordSetup } from './PasswordSetup'
-import type { TeamInvitationsApi } from './TeamInvitations'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -68,34 +67,6 @@ export default function CloudApp() {
     signedOut = useRef(false)
   const entryFlowPending = useRef(entryFlow === 'invite' || entryFlow === 'recovery')
   snapshotRef.current = snapshot
-  const invitations = useMemo<TeamInvitationsApi | undefined>(() => {
-    if (!client || !session || snapshot?.role !== 'admin') return undefined
-    const endpoint = `resend-invite?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
-    const invoke = async (body?: { user_id: string; request_id: string }) => {
-      const result = await client.functions.invoke(endpoint, {
-        method: body ? 'POST' : 'GET',
-        ...(body ? { body } : {}),
-      })
-      if (result.error) {
-        let message = 'Invitation request interrupted. Check delivery before retrying.'
-        if (result.error.context instanceof Response) {
-          try {
-            const response = await result.error.context.json()
-            // Only this endpoint's fixed messages are displayed; no SDK error object is logged.
-            if (typeof response.error === 'string') message = response.error
-          } catch {
-            /* Keep a safe fallback. */
-          }
-        }
-        throw new Error(message)
-      }
-      return result.data
-    }
-    return {
-      load: () => invoke(),
-      resend: (userId, requestId) => invoke({ user_id: userId, request_id: requestId }),
-    }
-  }, [session?.user.id, snapshot?.workspace.id, snapshot?.role])
   const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
     if (!client || !session || snapshot?.role !== 'admin') return undefined
     const endpoint = `whatsapp-test?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
@@ -503,7 +474,6 @@ export default function CloudApp() {
         <App
           key={`${session.user.id}-${version}`}
           cloud={{
-            invitations,
             whatsapp,
             initial: snapshotToStore(snapshot),
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,
