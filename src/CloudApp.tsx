@@ -13,6 +13,7 @@ import { loadSnapshot, snapshotToStore, storeChanges } from './cloudRepository'
 import type { Snapshot } from './cloudRepository'
 import type { Store } from './model'
 import { createTabAuthStorage } from './authStorage'
+import { createPromoApi } from './promoRepository'
 
 // Read only the flow label before the SDK consumes the URL fragment. Never log tokens.
 const entryFlow = new URLSearchParams(window.location.hash.slice(1)).get('type')
@@ -66,6 +67,36 @@ export default function CloudApp() {
   const activeUser = useRef<string | null>(null),
     signedOut = useRef(false)
   const entryFlowPending = useRef(entryFlow === 'invite' || entryFlow === 'recovery')
+  const [promoPermission, setPromoPermission] = useState<{
+    user: string
+    workspace: string
+    allowed: boolean
+  } | null>(null)
+  const promoAllowed =
+    !!session &&
+    !!snapshot &&
+    promoPermission?.user === session.user.id &&
+    promoPermission.workspace === snapshot.workspace.id &&
+    promoPermission.allowed
+  const promos = useMemo(
+    () =>
+      client && snapshot && promoAllowed
+        ? createPromoApi(client, snapshot.workspace.id)
+        : undefined,
+    [promoAllowed, snapshot?.workspace.id],
+  )
+  useEffect(() => {
+    if (!client || !session || !snapshot) return
+    let active = true
+    const user = session.user.id,
+      workspace = snapshot.workspace.id
+    void client.rpc('crm_promo_access', { ws: workspace }).then(({ data, error }) => {
+      if (active) setPromoPermission({ user, workspace, allowed: !error && data === true })
+    })
+    return () => {
+      active = false
+    }
+  }, [session?.user.id, snapshot?.workspace.id])
   snapshotRef.current = snapshot
   const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
     if (!client || !session || snapshot?.role !== 'admin') return undefined
@@ -474,6 +505,8 @@ export default function CloudApp() {
         <App
           key={`${session.user.id}-${version}`}
           cloud={{
+            promos,
+            bigDawg: promoAllowed,
             whatsapp,
             initial: snapshotToStore(snapshot),
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,

@@ -9,6 +9,8 @@ import { RegionBadge } from './RegionBadge'
 import { CustomerProfile } from './CustomerProfile'
 import { ActivityHistory } from './ActivityHistory'
 import { PageHeader } from './PageHeader'
+import { PromoCodes } from './PromoCodes'
+import type { PromoApi } from './promoRepository'
 import { DatePicker } from './DatePicker'
 import { serviceFits, sizeLabels } from './websiteCatalog'
 import { ScheduleCalendar } from './Calendar'
@@ -45,6 +47,7 @@ import {
   Building2,
   Leaf,
   PanelLeftClose,
+  Tag,
   RotateCcw,
 } from 'lucide-react'
 import {
@@ -72,7 +75,8 @@ import type {
   Store,
   Vehicle,
 } from './model'
-type Page = 'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings' | 'My washes'
+type Page =
+  'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings' | 'My washes' | 'Promo codes'
 type Detail = { kind: 'booking' | 'customer' | 'vehicle'; id: string } | null
 const initials = (name: string) =>
   name
@@ -202,6 +206,8 @@ function Dialog({
   )
 }
 export interface CloudMode {
+  promos?: PromoApi
+  bigDawg?: boolean
   whatsapp?: WhatsAppTestApi
   washerStaffId?: string
   saveWorkTime: (id: string, minutes: number | null) => Promise<Store>
@@ -677,6 +683,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 { name: 'Bookings', icon: CalendarDays },
                 { name: 'Customers', icon: Users },
                 { name: 'Messages', icon: MessageSquare },
+                ...(cloud?.promos ? [{ name: 'Promo codes' as const, icon: Tag }] : []),
                 { name: 'Settings', icon: SlidersHorizontal },
               ] as const
             )
@@ -745,6 +752,11 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <div>
                 {cloud?.label ?? 'Demo manager'}
                 <span>{cloud?.role ?? 'Park n Wash team'}</span>
+                {cloud?.bigDawg && (
+                  <span className="account-big-dawg">
+                    <span aria-hidden="true">😎</span> BIG DAWG
+                  </span>
+                )}
               </div>
               <Leaf size={17} />
             </div>
@@ -777,105 +789,113 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               <kbd>⌘ K</kbd>
             </button>
             <span className="topbar-avatar">
+              {cloud?.bigDawg && (
+                <span className="account-big-dawg">
+                  <span aria-hidden="true">😎</span> BIG DAWG
+                </span>
+              )}
               <Avatar small name={cloud?.label ?? 'Demo Manager'} />
             </span>
           </header>
           <main className="workspace-main" data-page={page.toLowerCase()}>
-            <PageHeader
-              title={page}
-              badge={!cloud ? 'Demo' : undefined}
-              meta={
-                page === 'Overview'
-                  ? dayLabel(overviewDate, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : page === 'Bookings'
-                    ? 'Europe/Zurich'
-                    : undefined
-              }
-              filters={
-                page !== 'Settings' && page !== 'My washes' ? (
-                  <>
-                    <label className="select-wrap">
-                      <MapPin size={14} />
-                      <Select
-                        aria-label="Filter region"
-                        value={region}
-                        onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
-                      >
-                        <option>All regions</option>
-                        <option>Geneva</option>
-                        <option>Ticino</option>
-                      </Select>
-                    </label>
-                    {(page === 'Overview' || page === 'Bookings') && (
+            {page !== 'Promo codes' && (
+              <PageHeader
+                title={page}
+                badge={!cloud ? 'Demo' : undefined}
+                meta={
+                  page === 'Overview'
+                    ? dayLabel(overviewDate, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                    : page === 'Bookings'
+                      ? 'Europe/Zurich'
+                      : undefined
+                }
+                filters={
+                  page !== 'Settings' && page !== 'My washes' ? (
+                    <>
                       <label className="select-wrap">
-                        <Users size={14} />
+                        <MapPin size={14} />
                         <Select
-                          aria-label="Filter staff"
-                          value={staffFilter}
-                          onChange={(e) => setStaffFilter(e.target.value)}
+                          aria-label="Filter region"
+                          value={region}
+                          onChange={(e) => setRegion(e.target.value as Region | 'All regions')}
                         >
-                          <option>All staff</option>
-                          {staff
-                            .filter(
-                              (s) =>
-                                canAssignWash(s) ||
-                                store.bookings.some((b) => b.staffIds.includes(s.id)),
-                            )
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
+                          <option>All regions</option>
+                          <option>Geneva</option>
+                          <option>Ticino</option>
                         </Select>
                       </label>
-                    )}
-                  </>
-                ) : undefined
-              }
-              actions={
-                page === 'Customers' || page === 'Bookings' || page === 'Overview' ? (
-                  <>
-                    {page === 'Customers' && cloud?.role !== 'viewer' && (
-                      <button className="btn primary" onClick={() => setAddCustomerOpen(true)}>
-                        <Plus size={16} />
-                        Add customer
-                      </button>
-                    )}
-                    {(page === 'Bookings' || page === 'Overview') && (
-                      <button
-                        className="btn primary"
-                        disabled={cloud?.role === 'viewer'}
-                        onClick={() => {
-                          if (
-                            !store.vehicles.some((v) =>
-                              store.customers.some((c) => c.id === v.customerId),
-                            )
-                          ) {
-                            navigate('Customers')
-                            return
-                          }
+                      {(page === 'Overview' || page === 'Bookings') && (
+                        <label className="select-wrap">
+                          <Users size={14} />
+                          <Select
+                            aria-label="Filter staff"
+                            value={staffFilter}
+                            onChange={(e) => setStaffFilter(e.target.value)}
+                          >
+                            <option>All staff</option>
+                            {staff
+                              .filter(
+                                (s) =>
+                                  canAssignWash(s) ||
+                                  store.bookings.some((b) => b.staffIds.includes(s.id)),
+                              )
+                              .map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                          </Select>
+                        </label>
+                      )}
+                    </>
+                  ) : undefined
+                }
+                actions={
+                  page === 'Customers' || page === 'Bookings' || page === 'Overview' ? (
+                    <>
+                      {page === 'Customers' && cloud?.role !== 'viewer' && (
+                        <button className="btn primary" onClick={() => setAddCustomerOpen(true)}>
+                          <Plus size={16} />
+                          Add customer
+                        </button>
+                      )}
+                      {(page === 'Bookings' || page === 'Overview') && (
+                        <button
+                          className="btn primary"
+                          disabled={cloud?.role === 'viewer'}
+                          onClick={() => {
+                            if (
+                              !store.vehicles.some((v) =>
+                                store.customers.some((c) => c.id === v.customerId),
+                              )
+                            ) {
+                              navigate('Customers')
+                              return
+                            }
 
-                          setBookingStart({
-                            date: page === 'Overview' ? overviewDate : date,
-                            time: '09:00',
-                            staffId: staffFilter === 'All staff' ? undefined : staffFilter,
-                          })
-                          setNewBooking(true)
-                        }}
-                      >
-                        <Plus size={16} />
-                        New booking
-                      </button>
-                    )}
-                  </>
-                ) : undefined
-              }
-            />
+                            setBookingStart({
+                              date: page === 'Overview' ? overviewDate : date,
+                              time: '09:00',
+                              staffId: staffFilter === 'All staff' ? undefined : staffFilter,
+                            })
+                            setNewBooking(true)
+                          }}
+                        >
+                          <Plus size={16} />
+                          New booking
+                        </button>
+                      )}
+                    </>
+                  ) : undefined
+                }
+              />
+            )}
+            {page === 'Promo codes' && cloud?.promos && <PromoCodes api={cloud.promos} />}
             {storageError && (
               <div role="alert" className="notice">
                 Browser storage is unavailable. Changes will last only for this session.
