@@ -506,7 +506,9 @@ export default function CloudApp() {
           key={`${session.user.id}-${version}`}
           cloud={{
             promos,
-            bigDawg: promoAllowed,
+            // Personal labels are display-only. DB permissions come from the allowlist.
+            bigDawg: promoAllowed && session.user.id === '3dbbfba7-de4d-42fb-bb0b-d4cd2778a49a',
+            developer: promoAllowed && session.user.id === '2cf2707d-ea0c-4310-af6f-99d50d690e77',
             whatsapp,
             initial: snapshotToStore(snapshot),
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,

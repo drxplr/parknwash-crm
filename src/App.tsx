@@ -208,6 +208,7 @@ function Dialog({
 export interface CloudMode {
   promos?: PromoApi
   bigDawg?: boolean
+  developer?: boolean
   whatsapp?: WhatsAppTestApi
   washerStaffId?: string
   saveWorkTime: (id: string, minutes: number | null) => Promise<Store>
@@ -757,6 +758,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                     <span aria-hidden="true">😎</span> BIG DAWG
                   </span>
                 )}
+                {cloud?.developer && <span className="account-big-dawg">DEV</span>}
               </div>
               <Leaf size={17} />
             </div>
@@ -794,6 +796,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                   <span aria-hidden="true">😎</span> BIG DAWG
                 </span>
               )}
+              {cloud?.developer && <span className="account-big-dawg">DEV</span>}
               <Avatar small name={cloud?.label ?? 'Demo Manager'} />
             </span>
           </header>
