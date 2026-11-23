@@ -2,6 +2,8 @@ import './Messages.css'
 import { RegionBadge } from './RegionBadge'
 import { teamRoleLabels, teamRolesLabel } from './teamRoles'
 import { WhatsAppTest } from './WhatsAppTest'
+import { TeamInvitations } from './TeamInvitations'
+import type { TeamInvitationsApi } from './TeamInvitations'
 import type { WhatsAppTestApi } from './WhatsAppTest'
 import type { Staff, TeamRole } from './model'
 import { websitePackages, websiteServices } from './websiteCatalog'
@@ -439,10 +441,12 @@ export function Settings({
   store,
   onSave,
   whatsapp,
+  invitations,
 }: {
   store: Store
   onSave: (s: Store['settings']) => void
   whatsapp?: WhatsAppTestApi
+  invitations?: TeamInvitationsApi
 }) {
   const [draft, setDraft] = useState(structuredClone(store.settings)),
     [saved, setSaved] = useState(false)
@@ -451,6 +455,7 @@ export function Settings({
   const sections = [
     { id: 'services', label: 'Services & pricing', icon: Package },
     { id: 'team', label: 'Team members', icon: Users },
+    ...(invitations ? [{ id: 'invitations', label: 'Team invitations', icon: Users }] : []),
     { id: 'regions', label: 'Regions', icon: MapPin },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
@@ -492,7 +497,7 @@ export function Settings({
           </button>
         ))}
       </nav>
-      {section === 'whatsapp' ? <WhatsAppTest api={whatsapp} /> : <form
+      {section === 'invitations' && invitations ? <TeamInvitations api={invitations} /> : section === 'whatsapp' ? <WhatsAppTest api={whatsapp} /> : <form
         ref={formRef}
         className="operations settings-content"
         onChange={() => setSaved(false)}

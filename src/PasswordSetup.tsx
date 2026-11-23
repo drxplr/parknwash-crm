@@ -21,8 +21,8 @@ export function PasswordSetup({
       setError('Passwords do not match.')
       return
     }
-    if (password.length < 12) {
-      setError('Use at least 12 characters.')
+    if (password.length < 12 || password.length > 128) {
+      setError('Use between 12 and 128 characters.')
       return
     }
     setBusy(true)

@@ -1,6 +1,7 @@
 import { WasherWorkspace } from './WasherWorkspace'
 import { authErrorMessage, retryConnectionOnce, retryPasswordSignIn } from './connectionRecovery'
 import { PasswordSetup } from './PasswordSetup'
+import type { TeamInvitationsApi } from './TeamInvitations'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -27,6 +28,7 @@ const callbackError = callbackFailed
     ? 'This sign-in link has expired or has already been used. Ask your administrator for a new invitation, then open the newest email to set your password.'
     : 'This sign-in link could not be verified. Ask your administrator for a new invitation and open the newest email.'
   : ''
+if (callbackFailed) window.history.replaceState(null, '', window.location.pathname)
 const config = import.meta.env
 const emailAuthEnabled = config.VITE_EMAIL_AUTH_ENABLED === 'true'
 // Only the public API key is allowed here. No customer records are persisted
@@ -64,7 +66,36 @@ export default function CloudApp() {
     snapshotRef = useRef<Snapshot | null>(null)
   const activeUser = useRef<string | null>(null),
     signedOut = useRef(false)
+  const entryFlowPending = useRef(entryFlow === 'invite' || entryFlow === 'recovery')
   snapshotRef.current = snapshot
+  const invitations = useMemo<TeamInvitationsApi | undefined>(() => {
+    if (!client || !session || snapshot?.role !== 'admin') return undefined
+    const endpoint = `resend-invite?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
+    const invoke = async (body?: { user_id: string; request_id: string }) => {
+      const result = await client.functions.invoke(endpoint, {
+        method: body ? 'POST' : 'GET',
+        ...(body ? { body } : {}),
+      })
+      if (result.error) {
+        let message = 'Invitation request interrupted. Check delivery before retrying.'
+        if (result.error.context instanceof Response) {
+          try {
+            const response = await result.error.context.json()
+            // Only this endpoint's fixed messages are displayed; no SDK error object is logged.
+            if (typeof response.error === 'string') message = response.error
+          } catch {
+            /* Keep a safe fallback. */
+          }
+        }
+        throw new Error(message)
+      }
+      return result.data
+    }
+    return {
+      load: () => invoke(),
+      resend: (userId, requestId) => invoke({ user_id: userId, request_id: requestId }),
+    }
+  }, [session?.user.id, snapshot?.workspace.id, snapshot?.role])
   const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
     if (!client || !session || snapshot?.role !== 'admin') return undefined
     const endpoint = `whatsapp-test?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
@@ -124,6 +155,14 @@ export default function CloudApp() {
       // This user-editable marker only controls onboarding UI, never authorization.
       if (next?.user.invited_at && next.user.user_metadata?.crm_password_set !== true)
         setPasswordFlow(true)
+      if (
+        next &&
+        (entryFlowPending.current || sessionStorage.getItem('pnw-password-setup') === next.user.id)
+      ) {
+        entryFlowPending.current = false
+        sessionStorage.setItem('pnw-password-setup', next.user.id)
+        setPasswordFlow(true)
+      }
       activeUser.current = id
       setSession(next)
       setReady(true)
@@ -132,7 +171,10 @@ export default function CloudApp() {
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, next) => {
-      if (event === 'PASSWORD_RECOVERY') setPasswordFlow(true)
+      if (event === 'PASSWORD_RECOVERY' && next) {
+        sessionStorage.setItem('pnw-password-setup', next.user.id)
+        setPasswordFlow(true)
+      }
       acceptSession(next)
     })
     void client.auth
@@ -269,6 +311,8 @@ export default function CloudApp() {
     }
   }
   async function signOut() {
+    sessionStorage.removeItem('pnw-password-setup')
+    entryFlowPending.current = false
     authAttempt.current++
     loginPending.current = false
     setSigningIn(false)
@@ -377,7 +421,11 @@ export default function CloudApp() {
             password: newPassword,
             data: { crm_password_set: true },
           })
-          if (result.error) throw result.error
+          if (result.error)
+            throw new Error(
+              'Could not save your password. Check the password requirements or request a new invitation if your session has expired.',
+            )
+          sessionStorage.removeItem('pnw-password-setup')
           setPasswordFlow(false)
         }}
         onSignOut={() => void signOut()}
@@ -455,6 +503,7 @@ export default function CloudApp() {
         <App
           key={`${session.user.id}-${version}`}
           cloud={{
+            invitations,
             whatsapp,
             initial: snapshotToStore(snapshot),
             role: snapshot.can_manage === false ? 'viewer' : snapshot.role,
