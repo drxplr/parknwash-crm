@@ -1,7 +1,9 @@
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
-import { Info } from 'lucide-react'
+import { ChevronDown, Info } from 'lucide-react'
 import { completed, previousRange, revenuePrice, trend } from './reportModel'
 import type { Breakdown, ReportFact, ReportFilter } from './reportModel'
+export const ReportComparison = createContext(false)
 export const chf = (c: number | null) =>
   c === null ? '—' : `CHF ${(c / 100).toLocaleString('en-CH', { maximumFractionDigits: 2 })}`
 export const number = (n: number | null) =>
@@ -24,6 +26,8 @@ export function Change({
   before: number | null
   unit?: string
 }) {
+  const compare = useContext(ReportComparison)
+  if (!compare) return null
   if (now === null || before === null) return <small>Comparison unavailable</small>
   const diff = now - before
   return (
@@ -35,7 +39,7 @@ export function Change({
           : before === 0
             ? 'No previous baseline'
             : `${diff > 0 ? '+' : ''}${number((diff / Math.abs(before)) * 100)}%`}{' '}
-      <span>vs previous period</span>
+      <span>vs previous</span>
     </small>
   )
 }
@@ -76,10 +80,23 @@ export function Panel({
 }) {
   return (
     <section className="report-panel">
-      <h2>{title}</h2>
+      <h2>
+        {title}
+        {note && <Hint text={note} />}
+      </h2>
       {children}
-      {note && <p className="report-caption">{note}</p>}
     </section>
+  )
+}
+export function ReportDetails({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className="report-details">
+      <summary>
+        {title}
+        <ChevronDown size={16} />
+      </summary>
+      <div className="report-details-body">{children}</div>
+    </details>
   )
 }
 export function Empty({ text = 'No matching data in this period.' }: { text?: string }) {
@@ -96,9 +113,10 @@ export function Bars({
   money?: boolean
   limit?: number
 }) {
+  const compare = useContext(ReportComparison)
   const items = [
     ...rows,
-    ...previous
+    ...(compare ? previous : [])
       .filter((p) => !rows.some((r) => r.label === p.label))
       .map((p) => ({ label: p.label, count: 0, revenue: 0, priced: 0 })),
   ]
@@ -123,12 +141,14 @@ export function Bars({
             <div className="report-bar-track">
               <span style={{ width: `${Math.max(0, (value(r) / max) * 100)}%` }} />
             </div>
-            <small>
-              Previous:{' '}
-              {money
-                ? chf(prev && prev.count > 0 && prev.priced === 0 ? null : (prev?.revenue ?? 0))
-                : number(prev?.count ?? 0)}
-            </small>
+            {compare && (
+              <small>
+                Previous:{' '}
+                {money
+                  ? chf(prev && prev.count > 0 && prev.priced === 0 ? null : (prev?.revenue ?? 0))
+                  : number(prev?.count ?? 0)}
+              </small>
+            )}
           </li>
         )
       })}
@@ -136,6 +156,12 @@ export function Bars({
   )
 }
 export function DataTable({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
+  const compare = useContext(ReportComparison)
+  const visible = headers
+    .map((h, i) => (compare || !h.startsWith('Previous') ? i : -1))
+    .filter((i) => i >= 0)
+  rows = rows.map((row) => visible.map((i) => row[i]))
+  headers = visible.map((i) => headers[i])
   return !rows.length ? (
     <Empty />
   ) : (
@@ -185,8 +211,10 @@ export function TrendChart({
   filter: ReportFilter
   money?: boolean
 }) {
+  const compare = useContext(ReportComparison)
+  const comparisonFacts = compare ? prevFacts : []
   const current = trend(facts, filter),
-    prev = trend(prevFacts, previousRange(filter))
+    prev = compare ? trend(prevFacts, previousRange(filter)) : []
   // Equal-width bins relative to each period start preserve equivalent-day comparisons.
   const value = (r: (typeof current)[number]) => (money ? r.revenue : r.bookings)
   const max = Math.max(money ? 100 : 1, ...current.map(value), ...prev.map(value))
@@ -197,21 +225,21 @@ export function TrendChart({
           `${36 + (i * 628) / Math.max(1, rows.length - 1)},${152 - (value(r) / max) * 130}`,
       )
       .join(' ')
-  if (money && ![...facts, ...prevFacts].some((f) => completed(f) && revenuePrice(f) !== null))
-    return <Empty text="No completed services with known CHF prices in either period." />
-  return !facts.length && !prevFacts.length ? (
+  if (
+    money &&
+    ![...facts, ...comparisonFacts].some((f) => completed(f) && revenuePrice(f) !== null)
+  )
+    return <Empty text="No completed services with known CHF prices." />
+  return !facts.length && !comparisonFacts.length ? (
     <Empty />
   ) : (
     <>
-      <p className="report-caption">
-        {current.length < (Date.parse(filter.end) - Date.parse(filter.start)) / 86400000 + 1
-          ? 'Grouped into equal 7- or 30-day intervals.'
-          : 'Daily totals.'}
-      </p>
-      <div className="report-chart-legend">
-        <span>● Selected period</span>
-        <span>┄ Previous period</span>
-      </div>
+      {compare && (
+        <div className="report-chart-legend">
+          <span>● This period</span>
+          <span>┄ Previous period</span>
+        </div>
+      )}
       <svg
         className="report-trend"
         viewBox="0 0 700 180"
@@ -229,13 +257,15 @@ export function TrendChart({
             </text>
           </g>
         ))}
-        <polyline
-          points={points(prev)}
-          fill="none"
-          stroke="#737373"
-          strokeDasharray="4 5"
-          strokeWidth="2"
-        />
+        {compare && (
+          <polyline
+            points={points(prev)}
+            fill="none"
+            stroke="#737373"
+            strokeDasharray="4 5"
+            strokeWidth="2"
+          />
+        )}
         {money ? (
           <>
             <polyline points={points(current)} fill="none" stroke="#0066FF" strokeWidth="2.5" />
@@ -261,10 +291,14 @@ export function TrendChart({
           ))
         )}
         <text x="36" y="176">
-          {filter.start}
+          {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(
+            new Date(filter.start + 'T12:00Z'),
+          )}
         </text>
         <text x="674" y="176" textAnchor="end">
-          {filter.end}
+          {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(
+            new Date(filter.end + 'T12:00Z'),
+          )}
         </text>
       </svg>
       <details className="report-chart-data">
@@ -297,6 +331,7 @@ export function Matrix({
   rowKey: (f: ReportFact) => string
   colKey: (f: ReportFact) => string
 }) {
+  const compare = useContext(ReportComparison)
   return (
     <DataTable
       headers={['Completed washes', ...cols]}
@@ -305,9 +340,11 @@ export function Matrix({
         ...cols.map((c) => (
           <span className="report-matrix-value">
             {facts.filter((f) => rowKey(f) === r && colKey(f) === c).length}
-            <small>
-              prev {previousFacts.filter((f) => rowKey(f) === r && colKey(f) === c).length}
-            </small>
+            {compare && (
+              <small>
+                prev {previousFacts.filter((f) => rowKey(f) === r && colKey(f) === c).length}
+              </small>
+            )}
           </span>
         )),
       ])}
