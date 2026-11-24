@@ -1,3 +1,5 @@
+import { Reports } from './Reports'
+import type { ReportsApi } from './reportModel'
 import { StatusBadge, PaymentBadge } from './StatusBadge'
 import { WorkTimeEditor, WorkTimeSummary } from './WorkTime'
 import type { WorkTimeSave } from './workTimeModel'
@@ -25,6 +27,7 @@ import type { WhatsAppTestApi } from './WhatsAppTest'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
+  ChartNoAxesCombined,
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
@@ -76,7 +79,14 @@ import type {
   Vehicle,
 } from './model'
 type Page =
-  'Overview' | 'Bookings' | 'Customers' | 'Messages' | 'Settings' | 'My washes' | 'Promo codes'
+  | 'Overview'
+  | 'Bookings'
+  | 'Customers'
+  | 'Messages'
+  | 'Settings'
+  | 'My washes'
+  | 'Promo codes'
+  | 'Reports'
 type Detail = { kind: 'booking' | 'customer' | 'vehicle'; id: string } | null
 const initials = (name: string) =>
   name
@@ -206,6 +216,7 @@ function Dialog({
   )
 }
 export interface CloudMode {
+  reports?: ReportsApi
   promos?: PromoApi
   bigDawg?: boolean
   developer?: boolean
@@ -684,6 +695,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
                 { name: 'Bookings', icon: CalendarDays },
                 { name: 'Customers', icon: Users },
                 { name: 'Messages', icon: MessageSquare },
+                ...(!cloud || cloud.role !== 'viewer'
+                  ? [{ name: 'Reports' as const, icon: ChartNoAxesCombined }]
+                  : []),
                 ...(cloud?.promos ? [{ name: 'Promo codes' as const, icon: Tag }] : []),
                 { name: 'Settings', icon: SlidersHorizontal },
               ] as const
@@ -801,7 +815,7 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
             </span>
           </header>
           <main className="workspace-main" data-page={page.toLowerCase()}>
-            {page !== 'Promo codes' && (
+            {page !== 'Promo codes' && page !== 'Reports' && (
               <PageHeader
                 title={page}
                 badge={!cloud ? 'Demo' : undefined}
@@ -899,6 +913,9 @@ export default function App({ cloud }: { cloud?: CloudMode }) {
               />
             )}
             {page === 'Promo codes' && cloud?.promos && <PromoCodes api={cloud.promos} />}
+            {page === 'Reports' && (!cloud || cloud.role !== 'viewer') && (
+              <Reports api={cloud?.reports} store={store} />
+            )}
             {storageError && (
               <div role="alert" className="notice">
                 Browser storage is unavailable. Changes will last only for this session.

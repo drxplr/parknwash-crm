@@ -9,6 +9,7 @@ import type { WhatsAppTestApi, WhatsAppTestState } from './WhatsAppTest'
 import type { FormEvent } from 'react'
 import { ArrowRight, LogOut, RefreshCw } from 'lucide-react'
 import App from './App'
+import type { ReportData, ReportsApi } from './reportModel'
 import { loadSnapshot, snapshotToStore, storeChanges } from './cloudRepository'
 import type { Snapshot } from './cloudRepository'
 import type { Store } from './model'
@@ -98,6 +99,16 @@ export default function CloudApp() {
     }
   }, [session?.user.id, snapshot?.workspace.id])
   snapshotRef.current = snapshot
+  const reports = useMemo<ReportsApi | undefined>(() => {
+    if (!client || !snapshot || snapshot.can_manage === false) return undefined
+    const ws = snapshot.workspace.id
+    return async () => {
+      const { data, error } = await client.rpc('crm_report_facts', { ws })
+      if (error || !data || !Array.isArray(data.facts) || !Array.isArray(data.customers))
+        throw new Error('Reports unavailable')
+      return data as ReportData
+    }
+  }, [snapshot?.workspace.id, snapshot?.workspace.revision, snapshot?.can_manage])
   const whatsapp = useMemo<WhatsAppTestApi | undefined>(() => {
     if (!client || !session || snapshot?.role !== 'admin') return undefined
     const endpoint = `whatsapp-test?workspace_id=${encodeURIComponent(String(snapshot.workspace.id))}`
@@ -505,6 +516,7 @@ export default function CloudApp() {
         <App
           key={`${session.user.id}-${version}`}
           cloud={{
+            reports,
             promos,
             // Personal labels are display-only. DB permissions come from the allowlist.
             bigDawg: promoAllowed && session.user.id === '3dbbfba7-de4d-42fb-bb0b-d4cd2778a49a',
